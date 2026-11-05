@@ -425,3 +425,13 @@ select.campo{appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg x
 .elige + .grupo,.elige + .adjunto{margin-top:4px}
 @media (max-width:860px){.elige__ops{grid-template-columns:1fr}}
 .moneda + .elige,.campo + .elige{margin-top:18px}
+
+/* auditoría: sumas, formatos, PDF y fichas vacías */
+.suma{margin:4px 0 0;padding:10px 14px;border-radius:10px;background:var(--ambar-suave);color:var(--ambar-osc);font-size:14px;font-weight:500}
+.suma--ok{background:var(--ok-suave);color:var(--ok)}
+.campo--mal{border-color:#E0A39C!important;background:#FFF8F7}
+.campo__aviso{display:block;font-size:12.5px;color:var(--error);margin-top:2px}
+.bloque--revise{border-color:#F1D48A;background:var(--ambar-suave)}
+.descarga{margin:0 0 16px}
+.ficha__borrar{align-self:flex-end;margin:-4px 4px 4px 0;background:none;border:0;color:var(--error);font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:4px}
+.fichas{grid-auto-flow:row}

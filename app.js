@@ -30,6 +30,7 @@ function demoApi(d) {
   const db = ls.get("demo_db") || {};
   const r = {};
   if (d.accion === "entrar") { r.institucion = "Prueba DESEC"; r.usuario = d.usuario; r.proyectos = Object.entries(db).map(([c, p]) => ({ codigo: c, proyecto: (p.respuestas["1.2"] || {}).v || "", estado: p.estado, avance: p.avance || 0, actualizado: p.t || "" })); }
+  else if (d.accion === "borrarFicha") { delete db[d.codigo]; }
   else if (d.accion === "nuevo") { const c = Array.from({ length: 10 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join(""); db[c] = { respuestas: {}, archivos: {}, estado: "En llenado" }; r.codigo = c; }
   else {
     const p = db[d.codigo]; if (!p) return { ok: false, error: "No encontramos ese proyecto" };
@@ -86,6 +87,31 @@ function grupoResumen(q, v) {
   }
   return G.campos.map(c => (v.g || {})[c.k]).filter(lleno).slice(0, 3).join(" · ");
 }
+const numero = x => { const n = parseFloat(String(x ?? "").replace(/[^0-9.]/g, "")); return isNaN(n) ? 0 : n; };
+const pesos = n => "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+// revisa que el desglose (1.8) y los montos por institución (1.4) sumen el monto solicitado (1.8)
+function sumas() {
+  const total = numero(val("1.8").v), out = [];
+  const suma = (id, k) => (val(id).filas || []).reduce((a, f) => a + numero(f[k]), 0);
+  for (const [id, k, que] of [["1.8", "monto", "El desglose"], ["1.4", "monto", "Los montos por institución"]]) {
+    const q = porId[id]; if (!visible(q) || val(id).salida) continue;
+    if ((val(id).modo || "llenar") !== "llenar") continue;
+    const s = suma(id, k); if (!s) continue;
+    out.push({ id, que, s, total, ok: total > 0 && Math.abs(s - total) < 1 });
+  }
+  return out;
+}
+function textoSuma(r) {
+  if (!r.total) return `${r.que} suma ${pesos(r.s)}. Escriba arriba, en la 1.8, el monto total solicitado para comparar.`;
+  return r.ok ? `✓ ${r.que} suma ${pesos(r.s)}, igual al monto solicitado.` : `⚠ ${r.que} suma ${pesos(r.s)} y el monto solicitado es ${pesos(r.total)}: hay una diferencia de ${pesos(Math.abs(r.s - r.total))}.`;
+}
+function actualizarSumas() {
+  const rs = sumas();
+  document.querySelectorAll("[data-suma]").forEach(el => {
+    const r = rs.find(x => x.id === el.dataset.suma);
+    el.hidden = !r; if (r) { el.textContent = textoSuma(r); el.classList.toggle("suma--ok", r.ok); }
+  });
+}
 function grupoTexto(q, v) {
   const G = q.grupo;
   const fila = f => G.campos.filter(c => lleno(f[c.k])).map(c => c.l + ": " + f[c.k]).join("; ");
@@ -115,11 +141,17 @@ function resumen() {
   const vis = todas.filter(visible);
   const juarez = vis.filter(q => val(q.id).salida).map(q => `${q.id} · ${corto(q.texto)} — ${val(q.id).salida}`);
   const sin = vis.filter(q => !contestada(q)).map(q => `${q.id} · ${corto(q.texto)} — sin contestar`);
-  const legible = todas.map(q => [q.id, visible(q) ? texto(q) : "(no aplica)"]);
+  const legible = todas.map(q => [q.id, visible(q) ? texto(q) : "(no aplica)", etiqueta(q)]);
   return {
     proyecto: (val("1.2").v || "").trim(), quien: [val("1.1").g?.nombre, val("1.1").g?.cargo, val("1.1").g?.institucion].filter(lleno).join(", "),
     avance: Math.round(avanceTotal() * 100), pendientes: [...juarez, ...sin].join("\n"), legible
   };
+}
+function etiqueta(q) {
+  if (q.grupo) return q.grupo.titulo;
+  let t = q.texto.replace(/[¿?]/g, "").replace(/\s*\(.*?\)/g, "").split(/[.:]/)[0].trim();
+  if (t.length > 46) t = t.slice(0, 46).replace(/\s+\S*$/, "") + "…";
+  return t;
 }
 function corto(t) { t = t.replace(/\s+/g, " "); return t.length > 70 ? t.slice(0, 68) + "…" : t; }
 function texto(q) {
@@ -140,6 +172,7 @@ let tGuardar = null, guardando = false, pendiente = false;
 function setGuardado(est, txt) { const g = $("#guardado"); g.className = "guardado " + est; $("span", g).textContent = txt; }
 function cambio() {
   pendiente = true; ls.set("ficha_" + S.codigo, { r: S.r, t: Date.now() });
+  actualizarSumas();
   setGuardado("guardando", "Guardando…");
   clearTimeout(tGuardar); tGuardar = setTimeout(guardar, 1100);
   pintarProgreso();
@@ -213,11 +246,16 @@ function pintarProgreso() {
 function pintarPasos() {
   const vis = pantallasVisibles();
   const nav = $("#pasos");
-  nav.innerHTML = vis.map((p, i) => {
+  const html = vis.map((p, i) => {
     const v = avancePantalla(p);
     const cls = i === S.paso ? "es-actual" : (v >= 1 ? "es-lista" : "");
     return `<button class="paso ${cls}" data-i="${i}"><span class="paso__n">${v >= 1 && i !== S.paso ? "✓" : p.n}</span><span class="paso__t">${esc(p.titulo)}</span><span class="paso__v">${Math.round(v * 100)}%</span></button>`;
   }).join("") + `<button class="paso ${S.paso === "repaso" ? "es-actual" : ""}" data-i="repaso"><span class="paso__n">✓</span><span class="paso__t">Revisar y enviar</span></button>`;
+  // se actualiza en su lugar para no perder un clic que llegue a mitad de un redibujo
+  const t = document.createElement("div"); t.innerHTML = html;
+  const nuevos = [...t.children], viejos = [...nav.children];
+  if (nuevos.length !== viejos.length) { nav.innerHTML = html; return; }
+  nuevos.forEach((n, k) => { const o = viejos[k]; if (o.className !== n.className) o.className = n.className; if (o.innerHTML !== n.innerHTML) o.innerHTML = n.innerHTML; o.dataset.i = n.dataset.i; });
 }
 
 /* ================= expediente ================= */
@@ -256,7 +294,7 @@ function htmlPregunta(q) {
   if (t === "corto") cuerpo = `<input class="campo" data-f="v" value="${esc(v.v)}" aria-label="${esc(q.texto)}">`;
   if (t === "largo") cuerpo = `<textarea class="campo" data-f="v" rows="4" aria-label="${esc(q.texto)}">${esc(v.v)}</textarea>`;
   if (t === "numero") cuerpo = `<input class="campo campo--corto" data-f="v" inputmode="numeric" value="${esc(v.v)}" placeholder="0" aria-label="${esc(q.texto)}">`;
-  if (t === "moneda") cuerpo = `<div class="moneda campo--corto"><input class="campo campo--moneda" data-f="v" inputmode="decimal" value="${esc(v.v)}" placeholder="0.00" aria-label="${esc(q.texto)}"></div>`;
+  if (t === "moneda") cuerpo = `<div class="moneda campo--corto"><input class="campo campo--moneda" data-f="v" data-valida="moneda" inputmode="decimal" value="${esc(v.v)}" placeholder="0.00" aria-label="${esc(q.texto)}"></div>`;
   if (t === "fecha") cuerpo = `<input class="campo campo--corto" type="date" data-f="v" value="${esc(v.v)}" min="2026-11-01" max="2028-12-31" aria-label="${esc(q.texto)}">`;
   if (t === "unica" || t === "varias") {
     const sel = Array.isArray(v.v) ? v.v : (v.v ? [v.v] : []);
@@ -312,8 +350,10 @@ function modoDe(q, v) {
   return "";
 }
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+function tipoValida(c) { return c.t === "correo" ? "correo" : c.t === "tel" ? "tel" : c.t === "moneda" ? "moneda" : c.k === "cct" ? "cct" : c.k === "rfc" ? "rfc" : ""; }
 function htmlCampo(c, valor, i) {
-  const a = `data-g="${c.k}" data-fila="${i}" placeholder="${esc(c.ph ? "Ej. " + c.ph : "")}"`;
+  const vl = tipoValida(c);
+  const a = `data-g="${c.k}" data-fila="${i}" ${vl ? `data-valida="${vl}"` : ""} placeholder="${esc(c.ph ? "Ej. " + c.ph : "")}"`;
   let inp;
   if (c.t === "largo") inp = `<textarea class="campo" rows="3" ${a}>${esc(valor)}</textarea>`;
   else if (c.t === "mes") inp = `<select class="campo" data-g="${c.k}" data-fila="${i}"><option value="">Elija el mes</option>${MESES.map(m => `<option ${valor === m ? "selected" : ""}>${m}</option>`).join("")}</select>`;
@@ -335,6 +375,7 @@ function htmlGrupo(q, v) {
     <div class="grupo__cuerpo" ${abierto ? "" : "hidden"}>
       ${filas.map((f, i) => `<div class="grupo__fila ${G.repetible ? "grupo__fila--rep" : ""}">${G.repetible ? `<span class="grupo__num">${i + 1}</span>` : ""}${G.campos.map(c => htmlCampo(c, f[c.k], i)).join("")}${G.repetible && filas.length > 1 ? `<button type="button" class="grupo__quitar" data-fila-quitar="${i}" aria-label="Quitar renglón ${i + 1}">×</button>` : ""}</div>`).join("")}
       ${G.repetible ? `<button type="button" class="mas" data-fila-agregar>+ ${esc(G.agregar)}</button>` : ""}
+      ${q.id === "1.8" || q.id === "1.4" ? `<p class="suma" data-suma="${q.id}" hidden></p>` : ""}
     </div>
   </div>`;
 }
@@ -384,6 +425,7 @@ function mostrar(paso, foco) {
   document.querySelector(".navegacion").hidden = paso === "fin";
   el.classList.remove("entra"); void el.offsetWidth; el.classList.add("entra");
   llamados.clear(); setTimeout(vigilar, 450);
+  document.querySelectorAll("[data-valida]").forEach(validar); actualizarSumas();
   $("#btnAnterior").disabled = paso === 0 || paso === "fin";
   const sig = $("#btnSiguiente");
   sig.hidden = paso === "fin";
@@ -404,6 +446,8 @@ function htmlRepaso() {
   const li = q => `<li><button data-ir="${q.id}">${q.id} · ${esc(corto(q.texto))}</button></li>`;
   return `<header class="pantalla__cab"><p class="kicker">Último paso</p><h1 class="pantalla__titulo">Revisar y enviar</h1><p class="pantalla__intro">No necesita tener todo. Lo marcado como pendiente lo resolvemos juntos en Ciudad Juárez. Puede seguir editando después de enviar.</p></header>
   <div class="repaso">${vis.map((p, i) => `<div class="repaso__p"><span class="paso__n" style="border-color:var(--linea);color:var(--azul)">${p.n}</span><b>${esc(p.titulo)}</b><small>${Math.round(avancePantalla(p) * 100)} %</small><button class="btn btn--linea" data-pantalla="${i}">Ver</button></div>`).join("")}</div>
+  ${(() => { const s = sumas().filter(r => !r.ok), f = avisosFormato(); return s.length || f.length ? `<div class="bloque bloque--revise"><h3>Revise antes de enviar (${s.length + f.length})</h3><p style="margin:0 0 6px;color:var(--gris)">Puede enviar así; solo le avisamos para que la ficha llegue lo más completa posible.</p><ul>${s.map(r => `<li><button data-ir="${r.id}">${r.id} · ${esc(textoSuma(r))}</button></li>`).join("")}${f.map(a => `<li><button data-ir="${a.q.id}">${a.q.id} · ${esc(a.txt)}</button></li>`).join("")}</ul></div>` : ""; })()}
+  <p class="descarga"><button type="button" class="btn btn--linea" data-pdf>${ICO.subir.replace('M10 13V3M6 7l4-4 4 4', 'M10 3v10M6 9l4 4 4-4')} Descargar mi ficha en PDF</button></p>
   ${faltan.length ? `<div class="bloque" style="border-color:#F0B8B3"><h3>Antes de enviar falta</h3><ul>${faltan.map(id => li(porId[id])).join("")}</ul></div>` : ""}
   <div class="bloque"><h3>Lo vemos en Juárez (${jz.length})</h3>${jz.length ? `<ul>${jz.map(li).join("")}</ul>` : "<p style='margin:0;color:var(--gris)'>Nada marcado.</p>"}</div>
   <div class="bloque"><h3>Sin contestar (${sin.length})</h3>${sin.length ? `<p style="margin:0 0 4px;color:var(--gris)">Puede contestarlas o marcar «Aún no lo tenemos». No es obligatorio para enviar.</p>` +
@@ -411,11 +455,83 @@ function htmlRepaso() {
 }
 function htmlFin() {
   return `<div class="fin"><svg id="anilloFin" viewBox="0 0 300 300"></svg><h2>¡Listo! Recibimos su ficha.</h2>
-  <p>Gracias. Revisaremos la información antes de la sesión de trabajo en Ciudad Juárez, del 17 al 18 de noviembre.</p>
+  <p>Gracias. Revisaremos la información antes de la sesión de trabajo en Ciudad Juárez, del 17 al 18 de noviembre. Le enviamos una confirmación al correo que registró.</p>
   <p>Puede volver a entrar con su usuario para corregir o agregar documentos.</p>
-  <p style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn btn--linea" data-pantalla="0">Seguir editando</button><button class="btn btn--azul" data-misfichas>Mis fichas</button></p></div>`;
+  <p style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn btn--linea" data-pantalla="0">Seguir editando</button><button class="btn btn--azul" data-misfichas>Mis fichas</button></p>
+  <p style="display:flex;justify-content:center"><button type="button" class="btn btn--linea" data-pdf>Descargar mi ficha en PDF</button></p></div>`;
+}
+const logosData = {};
+async function comoData(url) {
+  if (logosData[url]) return logosData[url];
+  const b = await fetch(url).then(r => r.blob());
+  return logosData[url] = await new Promise(ok => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(b); });
+}
+async function imprimirFicha() {
+  // la ventana se abre de inmediato (si no, el navegador la bloquea) y luego se llena
+  const w = window.open("", "_blank");
+  if (!w) { aviso("Permita las ventanas emergentes para descargar el PDF."); return; }
+  w.document.write("<p style='font-family:sans-serif;padding:40px'>Preparando su ficha…</p>");
+  const [side, desec] = await Promise.all([comoData("logo-side.png"), comoData("desec-principal-azul.png")]);
+  const qs = todas.filter(visible), r = resumen();
+  const fila = q => { const t = texto(q); return `<tr><td class="n">${q.id}</td><td class="p">${esc(q.texto)}</td><td class="r">${t ? esc(t).replace(/ \| /g, "<br>").replace(/ (\d+\)) /g, "<br>$1 ") : '<span class="vacio">Sin contestar</span>'}</td></tr>`; };
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha ejecutiva · ${esc(r.proyecto || "proyecto")}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>@page{size:letter;margin:14mm}body{font-family:Poppins,Arial,sans-serif;color:#343433;font-size:10.5px;margin:0}
+  .cab{display:flex;align-items:center;gap:22px;border-bottom:3px solid #FAB51B;padding-bottom:12px;margin-bottom:14px}.cab img{height:46px}.sep{width:1px;height:40px;background:#C9D2DD}
+  h1{font-size:22px;color:#00264F;margin:0 0 2px}.k{color:#003B7C;font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+  .meta{display:flex;gap:18px;margin:8px 0 14px;font-size:10.5px}.meta b{color:#00264F}
+  h2{font-size:13px;color:#fff;background:#00264F;padding:6px 10px;margin:16px 0 0;border-radius:4px}
+  table{width:100%;border-collapse:collapse}td{border-bottom:1px solid #E3DCCD;padding:6px 8px;vertical-align:top}
+  td.n{width:34px;color:#003B7C;font-weight:600}td.p{width:38%;color:#4F4F4F}td.r{color:#1a1a1a}.vacio{color:#B3261E}
+  .pend{white-space:pre-line;background:#FFF4D9;padding:10px;border-radius:6px}</style></head><body>
+  <div class="cab"><img src="${side}"><span class="sep"></span><img src="${desec}"></div>
+  <p class="k">Proyectos STEM · ISN 2026-2027 · Ficha ejecutiva de proyecto</p><h1>${esc(r.proyecto || "Proyecto sin nombre")}</h1>
+  <div class="meta"><span>Llenó: <b>${esc(r.quien || "—")}</b></span><span>Avance: <b>${r.avance} %</b></span><span>Fecha: <b>${new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}</b></span></div>
+  ${pantallasVisibles().map(p => `<h2>${p.n}. ${esc(p.titulo)}</h2><table>${qs.filter(q => q.pantalla === p.n).map(fila).join("")}</table>`).join("")}
+  ${r.pendientes ? `<h2>Pendientes para la sesión de trabajo</h2><p class="pend">${esc(r.pendientes)}</p>` : ""}
+  <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`;
+  w.document.open(); w.document.write(html); w.document.close();
 }
 const fmt = c => c ? c.slice(0, 5) + "-" + c.slice(5) : "";
+
+/* ---------- revisión de formatos (avisa, no bloquea) ---------- */
+const REGLAS = {
+  correo: v => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v) ? "" : "Revise el correo: debe verse como nombre@institucion.mx",
+  tel: v => v.replace(/\D/g, "").length === 10 ? "" : "El teléfono debe tener 10 dígitos",
+  cct: v => /^[0-9]{2}[A-Z]{3}[0-9]{4}[A-Z]$/i.test(v.replace(/\s/g, "")) ? "" : "La clave CCT tiene 10 caracteres, por ejemplo 08DST0055X",
+  rfc: v => /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/i.test(v.replace(/\s/g, "")) ? "" : "El RFC tiene 12 o 13 caracteres, por ejemplo XAXX010101000",
+  moneda: v => /^[\s$]*[0-9][0-9,]*(\.[0-9]{1,2})?\s*$/.test(v) ? "" : "Escriba solo la cantidad, por ejemplo 4,500,000"
+};
+function validar(el) {
+  const r = REGLAS[el.dataset.valida]; if (!r) return;
+  const v = String(el.value || "").trim(), msg = v ? r(v) : "";
+  el.classList.toggle("campo--mal", !!msg);
+  const caja = el.closest(".gcampo") || el.closest(".pregunta__cuerpo .campo-wrap") || el.parentElement;
+  let m = caja.querySelector(":scope > .campo__aviso");
+  if (msg) { if (!m) { m = document.createElement("small"); m.className = "campo__aviso"; caja.appendChild(m); } m.textContent = msg; }
+  else if (m) m.remove();
+}
+function formatoMoneda(el) {
+  const n = numero(el.value); if (!n && !/0/.test(el.value)) return;
+  const f = n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+  if (f !== el.value) { el.value = f; el.dispatchEvent(new Event("input", { bubbles: true })); }
+}
+document.addEventListener("focusout", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.valida) return;
+  if (el.dataset.valida === "moneda") formatoMoneda(el);
+  validar(el);
+});
+function avisosFormato() {
+  const out = [];
+  for (const q of todas.filter(visible)) {
+    const v = val(q.id); if (v.salida || !q.grupo) continue;
+    filasDe(q, v).forEach((f, i) => q.grupo.campos.forEach(c => {
+      const t = tipoValida(c), x = String(f[c.k] || "").trim();
+      if (t && x && REGLAS[t](x)) out.push({ q, txt: `${c.l}${q.grupo.repetible ? " (renglón " + (i + 1) + ")" : ""}: ${REGLAS[t](x)}` });
+    }));
+  }
+  return out;
+}
 
 /* ================= eventos del formulario ================= */
 function q_(el) { const a = el.closest(".pregunta"); return a ? porId[a.dataset.id] : null; }
@@ -466,6 +582,7 @@ function redibujar(q, foco) {
   const t = document.createElement("div"); t.innerHTML = htmlPregunta(q); el.replaceWith(t.firstElementChild);
   const nuevo = document.querySelector(`.pregunta[data-id="${q.id}"]`);
   if (vigia) vigia.observe(nuevo);
+  nuevo.querySelectorAll("[data-valida]").forEach(validar); actualizarSumas();
   nuevo.classList.toggle("es-contestada", contestada(q) && !val(q.id).salida);
   nuevo.classList.toggle("es-juarez", !!val(q.id).salida);
   if (foco) { const i = nuevo.querySelector(foco); i && i.focus(); }
@@ -501,6 +618,7 @@ document.addEventListener("click", e => {
     setR(q.id, v => { v.enlaces = [...(v.enlaces || []), u]; delete v.salida; }); redibujar(q, "[data-enlace]");
   } else if (t.dataset.quitarEnlace && q) { setR(q.id, v => { v.enlaces.splice(+t.dataset.quitarEnlace, 1); }); redibujar(q); }
   else if (t.dataset.ir) { cerrarExp(); irA(t.dataset.ir); }
+  else if (t.hasAttribute("data-pdf")) imprimirFicha();
   else if (t.dataset.pantalla) mostrar(+t.dataset.pantalla);
   else if (t.classList.contains("paso")) mostrar(t.dataset.i === "repaso" ? "repaso" : +t.dataset.i);
 });
@@ -652,7 +770,7 @@ function fichas(lista) {
   lista.sort((a, b) => String(b.actualizado).localeCompare(String(a.actualizado)));
   $("#listaFichas").innerHTML = lista.length ? lista.map(f => {
     const v = Math.max(0, Math.min(100, Number(f.avance) || 0));
-    return `<button class="ficha" data-abrir="${esc(f.codigo)}"><svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="4"/><circle cx="23" cy="23" r="19" fill="none" stroke="#FAB51B" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(119.4 * v / 100).toFixed(1)} 200" transform="rotate(-90 23 23)"/><text x="23" y="27.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="Poppins">${v}</text></svg><span class="ficha__txt"><b>${esc(f.proyecto || "Proyecto sin nombre")}</b><span>${f.actualizado ? "Último cambio: " + new Date(f.actualizado).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "Sin cambios todavía"}</span></span><span class="ficha__est ${f.estado === "Enviado" ? "ficha__est--env" : ""}">${f.estado === "Enviado" ? "Enviada" : "En llenado"}</span></button>`;
+    return `<button class="ficha" data-abrir="${esc(f.codigo)}"><svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="#E3E8EF" stroke-width="4"/><circle cx="23" cy="23" r="19" fill="none" stroke="#FAB51B" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(119.4 * v / 100).toFixed(1)} 200" transform="rotate(-90 23 23)"/><text x="23" y="27.5" text-anchor="middle" fill="#00264F" font-size="12" font-weight="700" font-family="Poppins">${v}</text></svg><span class="ficha__txt"><b>${esc(f.proyecto || "Proyecto sin nombre")}</b><span>${f.actualizado ? "Último cambio: " + new Date(f.actualizado).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "Sin cambios todavía"}</span></span><span class="ficha__est ${f.estado === "Enviado" ? "ficha__est--env" : ""}">${f.estado === "Enviado" ? "Enviada" : "En llenado"}</span></button>${!v && f.estado !== "Enviado" ? `<button type="button" class="ficha__borrar" data-borrar-ficha="${esc(f.codigo)}" aria-label="Borrar esta ficha vacía">Borrar ficha vacía</button>` : ""}`;
   }).join("") : `<p class="fichas__vacio">Todavía no tiene fichas. Abra la primera para comenzar.</p>`;
   S.codigo = null; portada();
 }
@@ -668,6 +786,12 @@ $("#btnMisFichas").onclick = () => misFichas().catch(e => aviso(e.message));
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-abrir]"); if (a) abrir(a.dataset.abrir).catch(err => aviso(err.message));
   if (e.target.closest("[data-misfichas]")) misFichas().catch(err => aviso(err.message));
+  const bf = e.target.closest("[data-borrar-ficha]");
+  if (bf) {
+    if (bf.dataset.confirmar !== "1") { bf.dataset.confirmar = "1"; bf.textContent = "¿Seguro? Toque otra vez para borrar"; setTimeout(() => { if (bf.isConnected) { bf.dataset.confirmar = ""; bf.textContent = "Borrar ficha vacía"; } }, 4000); return; }
+    bf.disabled = true; bf.textContent = "Borrando…";
+    api({ accion: "borrarFicha", codigo: bf.dataset.borrarFicha }).then(() => misFichas()).catch(err => { aviso(err.message); bf.disabled = false; bf.textContent = "Borrar ficha vacía"; });
+  }
 });
 $("#btnNuevo").onclick = async () => {
   const b = $("#btnNuevo"); b.disabled = true; b.textContent = "Preparando su ficha…";
