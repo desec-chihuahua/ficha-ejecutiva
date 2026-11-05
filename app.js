@@ -244,6 +244,7 @@ function pintarExpediente() {
 const ICO = {
   juarez: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 1.5a5 5 0 0 0-5 5c0 3.6 5 8 5 8s5-4.4 5-8a5 5 0 0 0-5-5Z"/><circle cx="8" cy="6.5" r="1.8"/></svg>',
   subir: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13V3M6 7l4-4 4 4M3 13v2.5A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5V13"/></svg>',
+  lapiz: '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg>',
   mas: '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>',
   flecha: '<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg>',
   xls: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M8 8.5l8 7M16 8.5l-8 7"/></svg>'
@@ -266,7 +267,8 @@ function htmlPregunta(q) {
     }).join("") + `</div>`;
   }
   if (q.adjunto && q.adjunto.principal) cuerpo = "";
-  if (q.grupo) cuerpo = (q.grupo.reemplaza ? "" : cuerpo) + htmlGrupo(q, v);
+  const base = q.grupo && !q.grupo.reemplaza ? cuerpo : (q.grupo ? "" : cuerpo);
+  if (q.grupo) cuerpo = base + htmlGrupo(q, v);
   let adj = "";
   if (q.adjunto) {
     const archivos = S.a[q.id] || [];
@@ -278,6 +280,16 @@ function htmlPregunta(q) {
       `<div class="enlaces__fila"><input class="campo" data-enlace placeholder="https://drive.google.com/… o OneDrive, Dropbox"><button class="btn btn--linea" data-agregar-enlace>Agregar</button></div>` +
       `<ul class="archivos">${(v.enlaces || []).map((u, i) => `<li class="archivo ok"><span class="archivo__ico">URL</span><span class="archivo__txt"><b>${esc(u)}</b></span><button class="archivo__quitar" data-quitar-enlace="${i}" aria-label="Quitar enlace">×</button></li>`).join("")}</ul></details></div>`;
   }
+  // donde la misma información se puede escribir o subir en formato, primero se elige el camino
+  if (ELIGE[q.id]) {
+    const m = modoDe(q, v), e = ELIGE[q.id];
+    cuerpo = base + `<div class="elige"><p class="elige__t">¿Cómo prefiere entregar esta información? Elija una opción:</p>
+      <div class="elige__ops" role="radiogroup">
+        <button type="button" role="radio" aria-checked="${m === "llenar"}" class="elige__op ${m === "llenar" ? "sel" : ""}" data-modo="llenar"><span class="elige__ico">${ICO.lapiz}</span><span><b>Llenar aquí</b><small>${esc(e.llenar)}</small></span></button>
+        <button type="button" role="radio" aria-checked="${m === "subir"}" class="elige__op ${m === "subir" ? "sel" : ""}" data-modo="subir"><span class="elige__ico">${ICO.subir}</span><span><b>Subir formato</b><small>${esc(e.subir)}</small></span></button>
+      </div></div>` + (m === "llenar" ? htmlGrupo(q, v) : m === "subir" ? adj : "");
+    adj = "";
+  }
   const salidas = (q.salidas || []).map(s => `<button type="button" class="chip ${v.salida === s ? "sel" : ""}" data-salida="${esc(s)}" aria-pressed="${v.salida === s}">${ICO.juarez}${esc(s)} · lo vemos en Juárez</button>`).join("");
   return `<article class="pregunta" data-id="${q.id}" id="q-${q.id.replace(".", "-")}">
     <div class="pregunta__cab"><span class="pregunta__n">${q.id}</span><h3 class="pregunta__t">${esc(q.texto)}${q.obligatoria ? '<span class="pregunta__ob">Necesaria</span>' : ""}</h3></div>
@@ -286,6 +298,19 @@ function htmlPregunta(q) {
   </article>`;
 }
 const abiertos = new Set(), extras = new Set();
+const ELIGE = {
+  "1.4": { llenar: "Escriba cada institución en esta página", subir: "Descargue la plantilla de instituciones, llénela en Excel y súbala" },
+  "1.8": { llenar: "Escriba el desglose concepto por concepto", subir: "Descargue la plantilla del desglose, llénela en Excel y súbala" },
+  "5.3": { llenar: "Escriba cada módulo y sus horas", subir: "Suba el programa del curso (PDF, Word o Excel)" },
+  "6.1": { llenar: "Escriba cada equipo en esta página", subir: "Descargue la plantilla de equipo, llénela en Excel y súbala" },
+  "7.2": { llenar: "Escriba cada actividad y su mes", subir: "Descargue la plantilla de calendario, llénela en Excel y súbala" }
+};
+function modoDe(q, v) {
+  if (v.modo) return v.modo;
+  if ((S.a[q.id] || []).length || (v.enlaces || []).length) return "subir";
+  if (q.grupo && grupoLleno(q, v)) return "llenar";
+  return "";
+}
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 function htmlCampo(c, valor, i) {
   const a = `data-g="${c.k}" data-fila="${i}" placeholder="${esc(c.ph ? "Ej. " + c.ph : "")}"`;
@@ -449,7 +474,11 @@ function redibujar(q, foco) {
 document.addEventListener("click", e => {
   const t = e.target.closest("button,[data-ir]"); if (!t) return;
   const q = q_(t);
-  if (t.dataset.grupo && q) {
+  if (t.dataset.modo && q) {
+    setR(q.id, v => { v.modo = t.dataset.modo; });
+    if (t.dataset.modo === "llenar") abiertos.add(q.id);
+    redibujar(q, t.dataset.modo === "llenar" ? ".grupo__cuerpo input, .grupo__cuerpo select" : ".zona input");
+  } else if (t.dataset.grupo && q) {
     const abrir = !abiertos.has(q.id); abrir ? abiertos.add(q.id) : abiertos.delete(q.id);
     const g = t.closest(".grupo"), cuerpo = g.querySelector(".grupo__cuerpo");
     g.classList.toggle("abierto", abrir); t.setAttribute("aria-expanded", abrir); cuerpo.hidden = !abrir;
