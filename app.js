@@ -358,6 +358,7 @@ function mostrar(paso, foco) {
   if (paso === "fin") { $("#movilPaso").textContent = "Enviado"; $("#movilTitulo").textContent = "Ficha recibida"; }
   document.querySelector(".navegacion").hidden = paso === "fin";
   el.classList.remove("entra"); void el.offsetWidth; el.classList.add("entra");
+  llamados.clear(); setTimeout(vigilar, 450);
   $("#btnAnterior").disabled = paso === 0 || paso === "fin";
   const sig = $("#btnSiguiente");
   sig.hidden = paso === "fin";
@@ -399,7 +400,7 @@ function refrescarCondiciones() {
   if (typeof S.paso !== "number") return;
   document.querySelectorAll("[data-oculta]").forEach(ph => {
     const q = porId[ph.dataset.oculta];
-    if (visible(q)) { const t = document.createElement("div"); t.innerHTML = htmlPregunta(q); const n = t.firstElementChild; n.classList.add("aparece"); ph.replaceWith(n); }
+    if (visible(q)) { const t = document.createElement("div"); t.innerHTML = htmlPregunta(q); const n = t.firstElementChild; n.classList.add("aparece"); ph.replaceWith(n); if (vigia) vigia.observe(n); }
   });
   document.querySelectorAll(".pregunta").forEach(el => {
     const q = porId[el.dataset.id];
@@ -430,6 +431,7 @@ document.addEventListener("change", e => {
     });
     redibujar(q);
     refrescarCondiciones(); pintarProgreso();
+    if (el.type === "radio") { const a = document.querySelector(`.pregunta[data-id="${q.id}"]`); a && siguienteLlamado(a); }
   }
   if (el.type === "file") { subirArchivos(q, el.files); el.value = ""; }
   if (el.tagName === "SELECT" && el.dataset.g) el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -438,6 +440,7 @@ function redibujar(q, foco) {
   const el = document.querySelector(`.pregunta[data-id="${q.id}"]`); if (!el) return;
   const t = document.createElement("div"); t.innerHTML = htmlPregunta(q); el.replaceWith(t.firstElementChild);
   const nuevo = document.querySelector(`.pregunta[data-id="${q.id}"]`);
+  if (vigia) vigia.observe(nuevo);
   nuevo.classList.toggle("es-contestada", contestada(q) && !val(q.id).salida);
   nuevo.classList.toggle("es-juarez", !!val(q.id).salida);
   if (foco) { const i = nuevo.querySelector(foco); i && i.focus(); }
@@ -471,6 +474,31 @@ document.addEventListener("click", e => {
   else if (t.dataset.ir) { cerrarExp(); irA(t.dataset.ir); }
   else if (t.dataset.pantalla) mostrar(+t.dataset.pantalla);
   else if (t.classList.contains("paso")) mostrar(t.dataset.i === "repaso" ? "repaso" : +t.dataset.i);
+});
+/* ---------- guía visual: el cuadro donde va la respuesta «salta» brevemente ---------- */
+const llamados = new Set();
+function objetivo(el) { return el.querySelector(".grupo__boton, .opciones, .zona, .moneda, input.campo, textarea.campo, select.campo"); }
+function llamar(el) {
+  const q = porId[el.dataset.id]; if (!q || contestada(q)) return;
+  const t = objetivo(el); if (!t) return;
+  t.classList.remove("llamar"); void t.offsetWidth; t.classList.add("llamar");
+  setTimeout(() => t.classList.remove("llamar"), 1700);
+}
+const vigia = "IntersectionObserver" in window ? new IntersectionObserver(ents => ents.forEach(e => {
+  if (e.isIntersecting && !llamados.has(e.target.dataset.id)) { llamados.add(e.target.dataset.id); setTimeout(() => llamar(e.target), 250); }
+}), { threshold: .55 }) : null;
+function vigilar() { if (!vigia) return; vigia.disconnect(); document.querySelectorAll(".pregunta").forEach(el => vigia.observe(el)); }
+function siguienteLlamado(desde) {
+  // al terminar una pregunta, llama la atención sobre la siguiente sin contestar que esté a la vista
+  let el = desde.nextElementSibling;
+  while (el && !(el.classList.contains("pregunta") && !contestada(porId[el.dataset.id]))) el = el.nextElementSibling;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (r.top < innerHeight - 80 && r.bottom > 0) setTimeout(() => llamar(el), 200);
+}
+document.addEventListener("focusout", e => {
+  const a = e.target.closest?.(".pregunta"); if (!a) return;
+  setTimeout(() => { if (!a.contains(document.activeElement) && contestada(porId[a.dataset.id])) siguienteLlamado(a); }, 60);
 });
 function irA(id) { const vis = pantallasVisibles(); const i = vis.findIndex(p => p.n === porId[id].pantalla); mostrar(i, id); }
 

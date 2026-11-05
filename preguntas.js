@@ -88,13 +88,14 @@ window.FORM = {
     },
     {
      "id": "1.4",
-     "texto": "Suba la plantilla de instituciones: para cada una, plantel, CCT, responsable, alumnos, qué recibe y monto asignado.",
-     "tipo": "archivo",
-     "ayuda": "Descargue la hoja «Plantilla de instituciones». Ejemplo de renglón: «CONALEP plantel 1 | 08DCT0001X | Ing. Laura Pérez | 180 alumnos | 10 estaciones de soldadura | $2,400,000». La suma de montos debe dar el total del proyecto.",
+     "texto": "Anote cada institución que participa: plantel, CCT, responsable, qué recibe y monto asignado. Si lo prefiere, suba la plantilla llena.",
+     "tipo": "largo",
+     "ayuda": "Use «+ Agregar otra institución» para cada una. La suma de montos debe dar el total del proyecto. Si ya tiene la plantilla de instituciones llena, súbala abajo y puede dejar los renglones vacíos.",
      "cond": {
       "q": "1.3",
       "en": [
-       "Dos o más"
+       "Dos o más",
+       "Otro"
       ]
      },
      "obligatoria": false,
@@ -103,7 +104,57 @@ window.FORM = {
      ],
      "adjunto": {
       "etiqueta": "Plantilla de instituciones llena",
-      "principal": true
+      "principal": false
+     },
+     "grupo": {
+      "titulo": "Instituciones participantes",
+      "repetible": true,
+      "agregar": "Agregar otra institución",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "institucion",
+        "l": "Institución y plantel",
+        "t": "texto",
+        "ph": "CONALEP plantel 1"
+       },
+       {
+        "k": "cct",
+        "l": "Clave CCT",
+        "t": "texto",
+        "ph": "08DCT0001X"
+       },
+       {
+        "k": "responsable",
+        "l": "Responsable (nombre y cargo)",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez, jefa de Vinculación"
+       },
+       {
+        "k": "contacto",
+        "l": "Correo o teléfono",
+        "t": "texto",
+        "ph": "laura.perez@conalep.edu.mx"
+       },
+       {
+        "k": "recibe",
+        "l": "Qué recibe",
+        "t": "texto",
+        "ph": "10 estaciones de soldadura y curso de 40 h"
+       },
+       {
+        "k": "alumnos",
+        "l": "Alumnos por ciclo",
+        "t": "numero",
+        "ph": "180"
+       },
+       {
+        "k": "monto",
+        "l": "Monto asignado con IVA",
+        "t": "moneda",
+        "ph": "2,400,000"
+       }
+      ]
      },
      "plantilla": {
       "nombre": "Plantilla de instituciones",
@@ -461,22 +512,28 @@ window.FORM = {
       "reemplaza": false,
       "campos": [
        {
-        "k": "otorgante",
-        "l": "Quién otorgó el recurso",
-        "t": "texto",
-        "ph": "I2C"
-       },
-       {
         "k": "receptora",
         "l": "Institución que lo recibió",
         "t": "texto",
-        "ph": "CONALEP Chihuahua, plantel Ciudad Juárez I"
+        "ph": "CONALEP Chihuahua, plantel 1"
        },
        {
         "k": "monto",
-        "l": "Monto",
+        "l": "Monto recibido",
         "t": "moneda",
         "ph": "3,000,000"
+       },
+       {
+        "k": "convenio",
+        "l": "Convenio o documento",
+        "t": "texto",
+        "ph": "Convenio de colaboración 2026"
+       },
+       {
+        "k": "fecha",
+        "l": "Fecha en que se recibió",
+        "t": "texto",
+        "ph": "Agosto de 2026"
        }
       ]
      }
@@ -728,7 +785,33 @@ window.FORM = {
      ],
      "salidas": [
       "Aún no lo sabemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Nombres de quienes asistirían",
+      "repetible": true,
+      "agregar": "Agregar otra persona",
+      "reemplaza": false,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez Ruiz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo o rol",
+        "t": "texto",
+        "ph": "Responsable técnico"
+       },
+       {
+        "k": "celular",
+        "l": "Celular",
+        "t": "tel",
+        "ph": "000 000 0000"
+       }
+      ]
+     }
     }
    ]
   },
@@ -738,8 +821,8 @@ window.FORM = {
    "preguntas": [
     {
      "id": "4.1",
-     "texto": "¿Qué tipo de institución es la que se beneficia?",
-     "tipo": "unica",
+     "texto": "¿Qué tipo de institución es la que se beneficia? Si son varias, marque todas las que apliquen.",
+     "tipo": "varias",
      "ayuda": "Esto define si el Estado puede asignarle el recurso directamente o si debe llegar por otra vía.",
      "cond": null,
      "obligatoria": false,
@@ -923,7 +1006,7 @@ window.FORM = {
    "preguntas": [
     {
      "id": "5.1",
-     "texto": "¿Quién impartirá el programa? Nombre o razón social y RFC.",
+     "texto": "¿Quién impartirá el programa? Anote los datos de cada proveedor.",
      "tipo": "corto",
      "ayuda": "Ejemplo: Robótica Educativa del Norte, S.A. de C.V., RFC XAXX010101000.\nSi la tiene, adjunte la constancia de situación fiscal del proveedor.",
      "cond": {
@@ -938,9 +1021,9 @@ window.FORM = {
       "principal": false
      },
      "grupo": {
-      "titulo": "Datos del proveedor",
-      "repetible": false,
-      "agregar": "",
+      "titulo": "Proveedores",
+      "repetible": true,
+      "agregar": "Agregar otro proveedor",
       "reemplaza": true,
       "campos": [
        {
@@ -954,6 +1037,12 @@ window.FORM = {
         "l": "RFC",
         "t": "texto",
         "ph": "XAXX010101000"
+       },
+       {
+        "k": "imparte",
+        "l": "Qué impartirá",
+        "t": "texto",
+        "ph": "Curso de robótica, 80 h"
        },
        {
         "k": "contacto",
@@ -971,7 +1060,7 @@ window.FORM = {
         "k": "telefono",
         "l": "Teléfono",
         "t": "tel",
-        "ph": "656 000 0000"
+        "ph": "000 000 0000"
        }
       ]
      }
@@ -1317,7 +1406,7 @@ window.FORM = {
    "preguntas": [
     {
      "id": "6.1",
-     "texto": "Suba la lista de equipo usando la plantilla: qué es, especificaciones, cantidad y precio con IVA.",
+     "texto": "Lista de equipo: súbala con la plantilla o anótela aquí renglón por renglón (qué es, cantidad y precio con IVA).",
      "tipo": "archivo",
      "ayuda": "Descargue la plantilla al inicio de esta sección. Ejemplo de renglón: «Estación de soldadura SMD; 110 V, control digital; 10 piezas; $8,500 c/u; $85,000».\nSi aún no tiene la lista completa, suba lo que tenga.",
      "cond": {
@@ -1330,6 +1419,44 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Lista de equipo (plantilla llena)",
       "principal": true
+     },
+     "grupo": {
+      "titulo": "Equipo renglón por renglón",
+      "repetible": true,
+      "agregar": "Agregar otro equipo",
+      "reemplaza": false,
+      "campos": [
+       {
+        "k": "equipo",
+        "l": "Equipo",
+        "t": "texto",
+        "ph": "Estación de soldadura SMD"
+       },
+       {
+        "k": "especificaciones",
+        "l": "Especificaciones mínimas",
+        "t": "texto",
+        "ph": "110 V, control digital"
+       },
+       {
+        "k": "cantidad",
+        "l": "Cantidad",
+        "t": "numero",
+        "ph": "10"
+       },
+       {
+        "k": "precio",
+        "l": "Precio unitario con IVA",
+        "t": "moneda",
+        "ph": "8,500"
+       },
+       {
+        "k": "proveedor",
+        "l": "Proveedor que cotizó",
+        "t": "texto",
+        "ph": "Proveedor A"
+       }
+      ]
      },
      "plantilla": {
       "nombre": "Plantilla de equipo",
@@ -1499,8 +1626,8 @@ window.FORM = {
      "obligatoria": false,
      "opciones": [
       {
-       "v": "Sí",
-       "otro": false
+       "v": "Sí (¿qué equipos y por cuánto en dólares?)",
+       "otro": true
       },
       {
        "v": "No",
@@ -1651,8 +1778,8 @@ window.FORM = {
        "otro": false
       },
       {
-       "v": "Empresas aliadas",
-       "otro": false
+       "v": "Empresas aliadas (¿cuáles?)",
+       "otro": true
       },
       {
        "v": "Otro (¿cuál?)",
