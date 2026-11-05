@@ -375,7 +375,7 @@ function htmlRepaso() {
   const vis = pantallasVisibles();
   const qs = todas.filter(visible);
   const jz = qs.filter(q => val(q.id).salida), sin = qs.filter(q => !contestada(q));
-  const faltan = ["1.1", "1.2"].filter(id => !String(val(id).v || "").trim());
+  const faltan = ["1.1", "1.2"].filter(id => !contestada(porId[id]) || val(id).salida);
   const li = q => `<li><button data-ir="${q.id}">${q.id} · ${esc(corto(q.texto))}</button></li>`;
   return `<header class="pantalla__cab"><p class="kicker">Último paso</p><h1 class="pantalla__titulo">Revisar y enviar</h1><p class="pantalla__intro">No necesita tener todo. Lo marcado como pendiente lo resolvemos juntos en Ciudad Juárez. Puede seguir editando después de enviar.</p></header>
   <div class="repaso">${vis.map((p, i) => `<div class="repaso__p"><span class="paso__n" style="border-color:var(--linea);color:var(--azul)">${p.n}</span><b>${esc(p.titulo)}</b><small>${Math.round(avancePantalla(p) * 100)} %</small><button class="btn btn--linea" data-pantalla="${i}">Ver</button></div>`).join("")}</div>
@@ -565,7 +565,7 @@ $("#btnSiguiente").onclick = async () => {
   if (S.paso >= vis.length - 1) mostrar("repaso"); else mostrar(S.paso + 1);
 };
 async function enviar() {
-  const faltan = ["1.1", "1.2"].filter(id => !String(val(id).v || "").trim());
+  const faltan = ["1.1", "1.2"].filter(id => !contestada(porId[id]) || val(id).salida);
   if (faltan.length) { irA(faltan[0]); aviso("Falta: " + porId[faltan[0]].texto); return; }
   if (subiendo) { aviso("Espere a que terminen de subir los archivos."); return; }
   const b = $("#btnSiguiente"); b.disabled = true; b.textContent = "Enviando…";
