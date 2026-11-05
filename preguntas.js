@@ -12,7 +12,45 @@ window.FORM = {
      "ayuda": "Ejemplo: Ing. Laura Pérez Ruiz, jefa de Vinculación, CONALEP plantel 1.",
      "cond": null,
      "obligatoria": true,
-     "salidas": []
+     "salidas": [],
+     "grupo": {
+      "titulo": "Datos de quien llena",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez Ruiz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Jefa de Vinculación"
+       },
+       {
+        "k": "institucion",
+        "l": "Institución y plantel",
+        "t": "texto",
+        "ph": "CONALEP plantel 1"
+       },
+       {
+        "k": "correo",
+        "l": "Correo",
+        "t": "correo",
+        "ph": "laura.perez@plantel.edu.mx"
+       },
+       {
+        "k": "telefono",
+        "l": "Teléfono",
+        "t": "tel",
+        "ph": "656 000 0000"
+       }
+      ]
+     }
     },
     {
      "id": "1.2",
@@ -142,6 +180,32 @@ window.FORM = {
       "etiqueta": "Calendario de actividades",
       "principal": false
      },
+     "grupo": {
+      "titulo": "Datos de la descripción",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "que",
+        "l": "Qué se va a hacer o comprar",
+        "t": "largo",
+        "ph": "Equipar dos talleres con 20 estaciones de soldadura…"
+       },
+       {
+        "k": "quien",
+        "l": "Para quién",
+        "t": "texto",
+        "ph": "320 alumnos de Electrónica y Mecatrónica"
+       },
+       {
+        "k": "tiempo",
+        "l": "En cuánto tiempo",
+        "t": "texto",
+        "ph": "De febrero a agosto de 2027"
+       }
+      ]
+     },
      "plantilla": {
       "nombre": "Plantilla de calendario",
       "url": "plantillas/Plantilla_calendario.xlsx"
@@ -161,6 +225,26 @@ window.FORM = {
       "etiqueta": "Desglose del gasto",
       "principal": false
      },
+     "grupo": {
+      "titulo": "Desglose por concepto",
+      "repetible": true,
+      "agregar": "Agregar otro concepto",
+      "reemplaza": false,
+      "campos": [
+       {
+        "k": "concepto",
+        "l": "Concepto",
+        "t": "texto",
+        "ph": "Equipo de laboratorio"
+       },
+       {
+        "k": "monto",
+        "l": "Monto con IVA",
+        "t": "moneda",
+        "ph": "4,800,000"
+       }
+      ]
+     },
      "plantilla": {
       "nombre": "Plantilla de desglose del gasto",
       "url": "plantillas/Plantilla_desglose_del_gasto.xlsx"
@@ -175,7 +259,27 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Planteles",
+      "repetible": true,
+      "agregar": "Agregar otro plantel",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "plantel",
+        "l": "Plantel",
+        "t": "texto",
+        "ph": "Secundaria Técnica 55"
+       },
+       {
+        "k": "cct",
+        "l": "Clave CCT",
+        "t": "texto",
+        "ph": "08DST0055X"
+       }
+      ]
+     }
     },
     {
      "id": "1.10",
@@ -212,6 +316,32 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Soporte del dato (opcional)",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Datos del problema",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "problema",
+        "l": "Qué problema resuelve",
+        "t": "largo",
+        "ph": "Los alumnos egresan sin haber practicado con equipo real"
+       },
+       {
+        "k": "dato",
+        "l": "El dato que lo muestra",
+        "t": "texto",
+        "ph": "Solo 60 de 420 alumnos hicieron prácticas en 2025"
+       },
+       {
+        "k": "fuente",
+        "l": "De dónde sale el dato",
+        "t": "texto",
+        "ph": "Control escolar del plantel, 2025"
+       }
+      ]
      }
     }
    ]
@@ -323,7 +453,33 @@ window.FORM = {
      ],
      "salidas": [
       "No lo sé"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Detalle del recurso anterior",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": false,
+      "campos": [
+       {
+        "k": "otorgante",
+        "l": "Quién otorgó el recurso",
+        "t": "texto",
+        "ph": "I2C"
+       },
+       {
+        "k": "receptora",
+        "l": "Institución que lo recibió",
+        "t": "texto",
+        "ph": "CONALEP Chihuahua, plantel Ciudad Juárez I"
+       },
+       {
+        "k": "monto",
+        "l": "Monto",
+        "t": "moneda",
+        "ph": "3,000,000"
+       }
+      ]
+     }
     },
     {
      "id": "2.5",
@@ -343,6 +499,32 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Evidencia: facturas, actas, fotos o informe",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Lo que ya se compró o contrató",
+      "repetible": true,
+      "agregar": "Agregar otra compra",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "concepto",
+        "l": "Qué se compró o contrató",
+        "t": "texto",
+        "ph": "Estaciones de soldadura"
+       },
+       {
+        "k": "cantidad",
+        "l": "Cantidad",
+        "t": "numero",
+        "ph": "4"
+       },
+       {
+        "k": "pagado",
+        "l": "Monto pagado",
+        "t": "moneda",
+        "ph": "1,200,000"
+       }
+      ]
      }
     }
    ]
@@ -360,7 +542,39 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Datos del responsable del proyecto",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez Ruiz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Jefa de Vinculación"
+       },
+       {
+        "k": "correo",
+        "l": "Correo",
+        "t": "correo",
+        "ph": "laura.perez@plantel.edu.mx"
+       },
+       {
+        "k": "telefono",
+        "l": "Teléfono",
+        "t": "tel",
+        "ph": "656 000 0000"
+       }
+      ]
+     }
     },
     {
      "id": "3.2",
@@ -371,7 +585,39 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Datos del responsable técnico",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez Ruiz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Jefa de Vinculación"
+       },
+       {
+        "k": "correo",
+        "l": "Correo",
+        "t": "correo",
+        "ph": "laura.perez@plantel.edu.mx"
+       },
+       {
+        "k": "telefono",
+        "l": "Teléfono",
+        "t": "tel",
+        "ph": "656 000 0000"
+       }
+      ]
+     }
     },
     {
      "id": "3.3",
@@ -382,7 +628,27 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Datos del titular",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Dr. Juan Martínez"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Rector"
+       }
+      ]
+     }
     },
     {
      "id": "3.4",
@@ -393,7 +659,39 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Datos del responsable administrativo",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "Ing. Laura Pérez Ruiz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Jefa de Vinculación"
+       },
+       {
+        "k": "correo",
+        "l": "Correo",
+        "t": "correo",
+        "ph": "laura.perez@plantel.edu.mx"
+       },
+       {
+        "k": "telefono",
+        "l": "Teléfono",
+        "t": "tel",
+        "ph": "656 000 0000"
+       }
+      ]
+     }
     },
     {
      "id": "3.5",
@@ -522,6 +820,32 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Constancia de situación fiscal (opcional)",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Datos de la asociación civil",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "razon",
+        "l": "Nombre legal",
+        "t": "texto",
+        "ph": "Fundación Ejemplo para la Educación, A.C."
+       },
+       {
+        "k": "rfc",
+        "l": "RFC",
+        "t": "texto",
+        "ph": "XAXX010101000"
+       },
+       {
+        "k": "representante",
+        "l": "Representante legal",
+        "t": "texto",
+        "ph": "Lic. Ana Torres"
+       }
+      ]
      }
     },
     {
@@ -612,6 +936,44 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Constancia de situación fiscal del proveedor (opcional)",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Datos del proveedor",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "razon",
+        "l": "Nombre o razón social",
+        "t": "texto",
+        "ph": "Robótica Educativa del Norte, S.A. de C.V."
+       },
+       {
+        "k": "rfc",
+        "l": "RFC",
+        "t": "texto",
+        "ph": "XAXX010101000"
+       },
+       {
+        "k": "contacto",
+        "l": "Persona de contacto",
+        "t": "texto",
+        "ph": "Ing. Mario Ruiz"
+       },
+       {
+        "k": "correo",
+        "l": "Correo",
+        "t": "correo",
+        "ph": "contacto@proveedor.mx"
+       },
+       {
+        "k": "telefono",
+        "l": "Teléfono",
+        "t": "tel",
+        "ph": "656 000 0000"
+       }
+      ]
      }
     },
     {
@@ -660,6 +1022,26 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Programa del curso",
       "principal": true
+     },
+     "grupo": {
+      "titulo": "Módulos del curso",
+      "repetible": true,
+      "agregar": "Agregar otro módulo",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "modulo",
+        "l": "Módulo",
+        "t": "texto",
+        "ph": "Programación por bloques"
+       },
+       {
+        "k": "horas",
+        "l": "Horas",
+        "t": "numero",
+        "ph": "20"
+       }
+      ]
      }
     },
     {
@@ -696,6 +1078,38 @@ window.FORM = {
       "etiqueta": "Calendario de sesiones",
       "principal": false
      },
+     "grupo": {
+      "titulo": "Días, horario y lugar",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": false,
+      "campos": [
+       {
+        "k": "dias",
+        "l": "Días",
+        "t": "texto",
+        "ph": "Martes y jueves"
+       },
+       {
+        "k": "horario",
+        "l": "Horario",
+        "t": "texto",
+        "ph": "14:00 a 16:00 h"
+       },
+       {
+        "k": "periodo",
+        "l": "Periodo",
+        "t": "texto",
+        "ph": "Febrero a junio de 2027"
+       },
+       {
+        "k": "lugar",
+        "l": "Lugar",
+        "t": "texto",
+        "ph": "Aula de medios"
+       }
+      ]
+     },
      "plantilla": {
       "nombre": "Plantilla de calendario",
       "url": "plantillas/Plantilla_calendario.xlsx"
@@ -716,6 +1130,26 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Currículos de los instructores",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Datos de los instructores",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "numero",
+        "l": "Número de instructores",
+        "t": "numero",
+        "ph": "6"
+       },
+       {
+        "k": "perfil",
+        "l": "Perfil",
+        "t": "texto",
+        "ph": "Ingenieros en sistemas con certificación Sphero"
+       }
+      ]
      }
     },
     {
@@ -847,6 +1281,32 @@ window.FORM = {
      "adjunto": {
       "etiqueta": "Cotización del programa",
       "principal": false
+     },
+     "grupo": {
+      "titulo": "Costos del programa",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "total",
+        "l": "Costo total con IVA",
+        "t": "moneda",
+        "ph": "13,400,000"
+       },
+       {
+        "k": "alumnos",
+        "l": "Alumnos",
+        "t": "numero",
+        "ph": "500"
+       },
+       {
+        "k": "por_alumno",
+        "l": "Costo por alumno",
+        "t": "moneda",
+        "ph": "26,800"
+       }
+      ]
      }
     }
    ]
@@ -1121,7 +1581,27 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Carreras o especialidades",
+      "repetible": true,
+      "agregar": "Agregar otra carrera",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "carrera",
+        "l": "Carrera o especialidad",
+        "t": "texto",
+        "ph": "Mecatrónica"
+       },
+       {
+        "k": "alumnos",
+        "l": "Alumnos por ciclo",
+        "t": "numero",
+        "ph": "180"
+       }
+      ]
+     }
     },
     {
      "id": "6.11",
@@ -1134,7 +1614,27 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Dueño y resguardo del equipo",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "dueno",
+        "l": "Quién será dueño",
+        "t": "texto",
+        "ph": "El plantel"
+       },
+       {
+        "k": "resguarda",
+        "l": "Quién lo resguarda (nombre y cargo)",
+        "t": "texto",
+        "ph": "Ing. Pedro Gómez, jefe de taller"
+       }
+      ]
+     }
     },
     {
      "id": "6.12",
@@ -1207,6 +1707,26 @@ window.FORM = {
       "etiqueta": "Calendario 2027",
       "principal": false
      },
+     "grupo": {
+      "titulo": "Actividades por mes",
+      "repetible": true,
+      "agregar": "Agregar otra actividad",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "mes",
+        "l": "Mes",
+        "t": "mes",
+        "ph": ""
+       },
+       {
+        "k": "actividad",
+        "l": "Qué se hará",
+        "t": "texto",
+        "ph": "Compra del equipo"
+       }
+      ]
+     },
      "plantilla": {
       "nombre": "Plantilla de calendario",
       "url": "plantillas/Plantilla_calendario.xlsx"
@@ -1221,7 +1741,33 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Metas",
+      "repetible": true,
+      "agregar": "Agregar otra meta",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "meta",
+        "l": "Meta",
+        "t": "texto",
+        "ph": "Alumnos que terminan el programa"
+       },
+       {
+        "k": "numero",
+        "l": "Número",
+        "t": "texto",
+        "ph": "500"
+       },
+       {
+        "k": "medida",
+        "l": "Cómo se mide",
+        "t": "texto",
+        "ph": "Lista de asistencia con 80 % o más"
+       }
+      ]
+     }
     },
     {
      "id": "7.4",
@@ -1232,7 +1778,27 @@ window.FORM = {
      "obligatoria": false,
      "salidas": [
       "Aún no lo tenemos"
-     ]
+     ],
+     "grupo": {
+      "titulo": "Datos de quien reúne las facturas",
+      "repetible": false,
+      "agregar": "",
+      "reemplaza": true,
+      "campos": [
+       {
+        "k": "nombre",
+        "l": "Nombre completo",
+        "t": "texto",
+        "ph": "C.P. Rosa Díaz"
+       },
+       {
+        "k": "cargo",
+        "l": "Cargo",
+        "t": "texto",
+        "ph": "Jefa de Recursos Financieros"
+       }
+      ]
+     }
     },
     {
      "id": "7.5",
