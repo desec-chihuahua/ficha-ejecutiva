@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ficha ejecutiva de proyecto · Red de Talento Juárez</title>
+<meta name="description" content="Formulario para preparar la ficha ejecutiva de su proyecto. Se guarda solo; lo que falte lo vemos en Ciudad Juárez.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F7F8FA">
+<link rel="icon" href="desec-isotipo-azul.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<script>
+  // la portada se revela con la apertura; si algo falla, se revela sola
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("con-apertura");
+  else document.documentElement.classList.add("revelado", "llego");
+  setTimeout(function(){ document.documentElement.classList.add("revelado", "llego"); }, 7500);
+</script>
+</head>
+<body>
+
+<!-- ============ PORTADA ============ -->
+<section id="portada" class="portada" hidden>
+  <div class="portada__lienzo" id="portadaLienzo" aria-hidden="true"></div>
+  <header class="portada__top">
+    <div class="portada__logos">
+      <img src="logo-side.png" alt="Gobierno del Estado de Chihuahua · Secretaría de Innovación y Desarrollo Económico" class="logo-side rev-op">
+      <span class="portada__sep rev-op" aria-hidden="true"></span>
+      <img src="desec-principal-azul.png" alt="DESEC, Desarrollo Económico del Estado de Chihuahua, A.C." class="logo-desec">
+    </div>
+    <button class="saltar" id="btnSaltar" type="button">Saltar</button>
+  </header>
+  <div class="portada__cuerpo">
+   <div class="portada__intro">
+    <p class="kicker rev" style="--d:1">Red de Talento Juárez · ISN 2026-2027</p>
+    <h1 class="portada__titulo"><span class="rev" style="--d:2">La ficha</span> <span class="rev" style="--d:3">ejecutiva</span><br><span class="rev" style="--d:4">de su proyecto</span></h1>
+    <p class="portada__texto rev" style="--d:5">Reunimos aquí la información para preparar la ficha de su proyecto y definir la mejor vía para que el recurso llegue a tiempo. Llene un formulario por proyecto; si participan varias instituciones, uno solo para todas.</p>
+    <ul class="portada__datos rev" style="--d:6">
+      <li><b>Se guarda</b><span>solo, mientras avanza</span></li>
+      <li><b>Lo que falte</b><span>lo vemos juntos en Ciudad Juárez, del 17 al 18 de noviembre</span></li>
+    </ul>
+   </div>
+   <div class="portada__panel rev" style="--d:7">
+    <div id="vistaEntrar">
+      <form class="entrar" id="formEntrar" autocomplete="on">
+        <p class="entrar__tit">Entre con el usuario y la contraseña que le dio DESEC</p>
+        <label class="entrar__campo"><span>Usuario</span><input id="inpUsuario" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej. conalep.juarez" required></label>
+        <label class="entrar__campo"><span>Contraseña</span><span class="entrar__clave"><input id="inpContrasena" name="password" type="password" autocomplete="current-password" required><button type="button" id="btnVer" aria-label="Mostrar contraseña">Ver</button></span></label>
+        <label class="entrar__recordar"><input type="checkbox" id="chkRecordar" checked> Recordarme en este equipo</label>
+        <button class="btn btn--ambar btn--grande" type="submit" id="btnEntrar">Entrar <span aria-hidden="true">→</span></button>
+        <p class="codigo-form__error" id="errEntrar" role="alert"></p>
+        <p class="entrar__ayuda">¿No tiene usuario o lo olvidó? Escríbale a su contacto de DESEC.</p>
+      </form>
+    </div>
+    <div id="vistaFichas" hidden>
+      <div class="fichas__cab"><p class="kicker" id="fichasInst"></p><button class="enlace" id="btnSalir1">Salir</button></div>
+      <h2 class="fichas__tit">Sus fichas de proyecto</h2>
+      <p class="fichas__txt">Una ficha por proyecto. Si su institución tiene otro proyecto, abra una ficha nueva.</p>
+      <div class="fichas" id="listaFichas"></div>
+      <button class="btn btn--ambar btn--grande" id="btnNuevo">Abrir una ficha nueva <span aria-hidden="true">+</span></button>
+    </div>
+   </div>
+  </div>
+</section>
+
+<!-- ============ FORMULARIO ============ -->
+<div id="app" class="app" hidden>
+  <aside class="riel" id="riel">
+    <img src="desec-blanco.png" alt="DESEC" class="riel__logo">
+    <div class="anillos">
+      <svg id="anillos" viewBox="0 0 300 300" role="img" aria-label="Avance del formulario"></svg>
+      <div class="anillos__centro"><b id="pct">0</b><span>% listo</span></div>
+    </div>
+    <nav class="pasos" id="pasos" aria-label="Pantallas del formulario"></nav>
+    <div class="riel__codigo">
+      <span>Sesión</span>
+      <b id="codigoTxt">—</b>
+      <small id="instTxt"></small>
+      <div class="riel__acc"><button class="enlace-claro" id="btnMisFichas">Mis fichas</button><button class="enlace-claro" id="btnSalir2">Salir</button></div>
+    </div>
+  </aside>
+
+  <header class="barra-movil">
+    <div class="barra-movil__anillo"><svg id="anilloMovil" viewBox="0 0 44 44"></svg></div>
+    <div class="barra-movil__txt"><span id="movilPaso">Pantalla 1 de 7</span><b id="movilTitulo">Su proyecto</b></div>
+    <button class="barra-movil__btn" id="btnExpMovil" aria-label="Ver expediente">Expediente <span id="expCuentaMovil">0</span></button>
+  </header>
+
+  <main class="principal" id="principal" tabindex="-1">
+    <div class="pantalla" id="pantalla"></div>
+  </main>
+
+  <aside class="expediente" id="expediente" aria-label="Expediente del proyecto">
+    <div class="expediente__cab">
+      <p class="kicker">Expediente del proyecto</p>
+      <button class="expediente__cerrar" id="btnExpCerrar" aria-label="Cerrar expediente">×</button>
+    </div>
+    <h2 class="expediente__titulo" id="expProyecto">Proyecto sin nombre</h2>
+    <div class="expediente__resumen" id="expResumen"></div>
+    <ul class="expediente__lista" id="expLista"></ul>
+  </aside>
+
+  <footer class="navegacion">
+    <button class="btn btn--linea" id="btnAnterior">← Anterior</button>
+    <p class="guardado" id="guardado" aria-live="polite"><i></i><span>Listo para guardar</span></p>
+    <button class="btn btn--azul" id="btnSiguiente">Siguiente →</button>
+  </footer>
+</div>
+
+<!-- ============ DIÁLOGO ============ -->
+<div class="velo" id="velo" hidden>
+  <div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="dlgTitulo" id="dialogo"></div>
+</div>
+
+<div class="aviso" id="aviso" role="status" hidden></div>
+
+<script src="config.js"></script>
+<script src="preguntas.js"></script>
+<script src="app.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script type="module" src="apertura.js"></script>
+</body>
+</html>
