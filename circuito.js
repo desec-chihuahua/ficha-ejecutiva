@@ -73,13 +73,12 @@
           .onfinish = () => { p.removeAttribute('pathLength'); p.style.strokeDasharray = ''; };
       });
       svg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400 });
-      setTimeout(() => document.documentElement.classList.add('revelado', 'llego'), 750);
     }
     primera = false;
     // corriente hacia el panel
     vivos = 0; maxPulsos = reducido ? 0 : movil ? 7 : 24;
     const g0 = gen;
-    for (let i = 0; i < maxPulsos; i++) setTimeout(() => g0 === gen && pulso(pulsos, g0), 1200 + i * 120);
+    for (let i = 0; i < maxPulsos; i++) setTimeout(() => g0 === gen && pulso(pulsos, g0), 900 + i * 200);
     // alimentación de los cuatro componentes STEM: cada uno recibe corriente de la placa y se enciende
     alimentaciones = [];
     const cajas = [...stem.children], capaA = el('g', {}, svg);
@@ -97,8 +96,8 @@
       alimentaciones.push({ li, halo, nucleo, L: halo.getTotalLength() });
     });
     if (!reducido) { let k = 0; const g1 = gen;
-      const ciclo = () => { if (g1 !== gen) return; alimentar(alimentaciones[k++ % 4]); setTimeout(ciclo, k % 4 ? 650 : 1400); };
-      setTimeout(ciclo, primeraVez ? 2000 : 400); primeraVez = false; }
+      const ciclo = () => { if (g1 !== gen) return; alimentar(alimentaciones[k++ % 4]); setTimeout(ciclo, k % 4 ? 950 : 1900); };
+      setTimeout(ciclo, primeraVez ? 1600 : 400); primeraVez = false; }
   }
   let alimentaciones = [], primeraVez = true;
   function encender(li) { li.classList.add('vivo'); clearTimeout(li._t); li._t = setTimeout(() => li.classList.remove('vivo'), 750); }
@@ -109,7 +108,7 @@
     let fin;
     [a.halo, a.nucleo].forEach(p => {
       p.style.opacity = 1; p.style.strokeDasharray = `${cola} ${L + cola * 2}`;
-      fin = p.animate([{ strokeDashoffset: cola }, { strokeDashoffset: -L }], { duration: 480, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'both' });
+      fin = p.animate([{ strokeDashoffset: cola }, { strokeDashoffset: -L }], { duration: 720, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'both' });
     });
     fin.onfinish = () => { a.halo.style.opacity = a.nucleo.style.opacity = 0; encender(a.li); };
   }
@@ -126,14 +125,14 @@
     const haciaPanel = Math.hypot(a[0] - c.x, a[1] - c.y) > Math.hypot(b[0] - c.x, b[1] - c.y);
     const cola = 48 / s, punta = 10 / s, L = z.L;
     const desde = haciaPanel ? cola : -L, hasta = haciaPanel ? -L : cola;
-    const dur = Math.max(600, L * s / 380 * 1000);
+    const dur = Math.max(900, L * s / 240 * 1000);
     const ajuste = haciaPanel ? punta - cola : 0;          // la chispa blanca va al frente del pulso
     const piezas = [['pulso pulso--halo', cola, 0], ['pulso pulso--nucleo', cola, 0], ['pulso pulso--chispa', punta, ajuste]].map(([cl, largo, aj]) => {
       const p = el('path', { class: cl, d: z.el.getAttribute('d') }, capa);
       p.style.strokeDasharray = `${largo} ${L + cola * 2}`;
       return p.animate([{ strokeDashoffset: desde + aj }, { strokeDashoffset: hasta + aj }], { duration: dur, delay: retraso || 0, easing: 'cubic-bezier(.3,0,.7,1)', fill: 'both' });
     });
-    if (!z0 && Math.random() < .35) { pulso(capa, g0, z, 110); if (Math.random() < .5) pulso(capa, g0, z, 220); }   // ráfagas
+    if (!z0 && Math.random() < .35) { pulso(capa, g0, z, 170); if (Math.random() < .5) pulso(capa, g0, z, 340); }   // ráfagas
     piezas[1].onfinish = () => {
       piezas.forEach(x => x.effect.target.remove());
       const [ex, ey] = haciaPanel ? z.t.p[z.t.p.length - 1] : z.t.p[0];
@@ -157,7 +156,13 @@
 
   // se construye cuando la portada está a la vista y se detiene cuando se oculta
   let espera, listo = false, ultimo = '';
-  const fuentes = document.fonts ? document.fonts.ready : Promise.resolve();
+  const raiz = document.documentElement;
+  const arranque = new Promise(ok => {
+    if (reducido || !raiz.classList.contains('con-apertura') || raiz.classList.contains('revelado')) return ok();
+    ['apertura:textos', 'apertura:saltar'].forEach(ev => document.addEventListener(ev, ok, { once: true }));
+    new MutationObserver(() => raiz.classList.contains('revelado') && ok()).observe(raiz, { attributes: true, attributeFilter: ['class'] });
+  });
+  const fuentes = Promise.all([document.fonts ? document.fonts.ready : 0, arranque]);
   new ResizeObserver(() => {
     clearTimeout(espera);
     espera = setTimeout(() => fuentes.then(() => {

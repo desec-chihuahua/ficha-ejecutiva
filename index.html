@@ -11,13 +11,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css?v=202611061400">
-<link rel="stylesheet" href="circuito.css?v=202611061400">
+<link rel="stylesheet" href="estilos.css?v=202611061500">
+<link rel="stylesheet" href="circuito.css?v=202611061500">
 <script>
   // la portada se revela con la apertura; si algo falla, se revela sola
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("con-apertura");
   else document.documentElement.classList.add("revelado", "llego");
-  setTimeout(function(){ document.documentElement.classList.add("revelado", "llego"); }, 4000);
+  setTimeout(function(){ document.documentElement.classList.add("revelado", "llego"); }, 7500);
 </script>
 </head>
 <body>
@@ -25,13 +25,14 @@
 <!-- ============ PORTADA ============ -->
 <section id="portada" class="portada portada--circuito" hidden>
   <svg class="placa" id="placa" aria-hidden="true"></svg>
+  <div class="portada__lienzo" id="portadaLienzo" aria-hidden="true"></div>
   <header class="portada__top">
     <div class="portada__logos">
       <img src="logo-side.png" alt="Gobierno del Estado de Chihuahua · Secretaría de Innovación y Desarrollo Económico" class="logo-side rev-op">
       <span class="portada__sep rev-op" aria-hidden="true"></span>
       <img src="desec-principal-azul.png" alt="DESEC, Desarrollo Económico del Estado de Chihuahua, A.C." class="logo-desec">
     </div>
-    <button class="saltar" id="btnSaltar" type="button" hidden>Saltar</button>
+    <button class="saltar" id="btnSaltar" type="button">Saltar</button>
   </header>
   <div class="portada__cuerpo">
    <div class="portada__intro">
@@ -119,10 +120,12 @@
 
 <div class="aviso" id="aviso" role="status" hidden></div>
 
-<script src="config.js?v=202611061400"></script>
-<script src="preguntas.js?v=202611061400"></script>
-<script src="app.js?v=202611061400"></script>
-<script src="placa.js?v=202611061400"></script>
-<script src="circuito.js?v=202611061400"></script>
+<script src="config.js?v=202611061500"></script>
+<script src="preguntas.js?v=202611061500"></script>
+<script src="app.js?v=202611061500"></script>
+<script src="placa.js?v=202611061500"></script>
+<script src="circuito.js?v=202611061500"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script type="module" src="apertura.js?v=202611061500"></script>
 </body>
 </html>
