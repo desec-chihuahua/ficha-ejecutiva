@@ -24,6 +24,25 @@ const todas = F.pantallas.flatMap(p => p.preguntas.map(q => ({ ...q, pantalla: p
 const porId = Object.fromEntries(todas.map(q => [q.id, q]));
 
 /* ================= servidor ================= */
+// la 5.4 tenía días, horario y periodo en texto libre; ahora son renglones con días, horas y fechas
+function diasDe(t) {
+  const n = normal(t), idx = DIAS.map(normal);
+  const r = new RegExp("(" + idx.join("|") + ")\\s+(?:a|al)\\s+(" + idx.join("|") + ")").exec(n);
+  const sueltos = DIAS.filter((d, k) => new RegExp("(^|[^a-z])" + idx[k] + "s?([^a-z]|$)").test(n));
+  if (r) { const i = idx.indexOf(r[1]), j = idx.indexOf(r[2]); if (i > j) return []; const rango = DIAS.slice(i, j + 1); return DIAS.filter(d => rango.includes(d) || sueltos.includes(d)); }
+  return sueltos;
+}
+function migrar() {
+  const v = S.r["5.4"];
+  if (!v || !v.g) return false;
+  const g = v.g, viejo = [["Días", g.dias], ["Horario", g.horario], ["Periodo", g.periodo], ["Lugar", g.lugar]].filter(([, x]) => lleno(x)).map(([k, x]) => k + ": " + x).join("; ");
+  if (!(v.filas && v.filas.length)) {
+    const dias = diasDe(g.dias);
+    v.filas = [{ ...(dias.length ? { dias: dias.join(", ") } : {}), ...(lleno(g.lugar) ? { lugar: g.lugar } : {}) }];
+  }
+  if (viejo && !String(v.extra || "").includes(viejo)) v.extra = (lleno(v.extra) ? v.extra + "\n" : "") + "Capturado antes · " + viejo;
+  delete v.g; return true;
+}
 function demoApi(d) {
   // demostración local: usuario «prueba.desec», contraseña «demo123»
   if (d.usuario !== "prueba.desec" || d.contrasena !== "demo123") return { ok: false, error: "El usuario o la contraseña no coinciden." };
@@ -82,10 +101,10 @@ function grupoResumen(q, v) {
   const G = q.grupo, n = grupoLleno(q, v);
   if (!n) return "";
   if (G.repetible) {
-    const prim = (v.filas || []).filter(f => G.campos.some(c => lleno(f[c.k]))).map(f => G.campos.map(c => f[c.k]).filter(lleno)[0]).slice(0, 3);
+    const prim = (v.filas || []).filter(f => G.campos.some(c => lleno(f[c.k]))).map(f => G.campos.filter(c => lleno(f[c.k])).map(c => mostrarValor(c, f[c.k]))[0]).slice(0, 3);
     return n + (n === 1 ? " renglón: " : " renglones: ") + prim.join(", ") + (n > 3 ? "…" : "");
   }
-  return G.campos.map(c => (v.g || {})[c.k]).filter(lleno).slice(0, 3).join(" · ");
+  return G.campos.filter(c => lleno((v.g || {})[c.k])).map(c => mostrarValor(c, v.g[c.k])).slice(0, 3).join(" · ");
 }
 const numero = x => { const n = parseFloat(String(x ?? "").replace(/[^0-9.]/g, "")); return isNaN(n) ? 0 : n; };
 const pesos = n => "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
@@ -96,14 +115,19 @@ function sumas() {
   for (const [id, k, que] of [["1.8", "monto", "El desglose"], ["1.4", "monto", "Los montos por institución"]]) {
     const q = porId[id]; if (!visible(q) || val(id).salida) continue;
     if ((val(id).modo || "llenar") !== "llenar") continue;
-    const s = suma(id, k); if (!s) continue;
+    const s = suma(id, k);
+    const malos = [val("1.8").v, ...(val(id).filas || []).map(f => f[k])].some(x => lleno(x) && REGLAS.moneda(String(x).trim()));
+    if (!(val(id).filas || []).some(f => lleno(f[k])) || (!s && !malos)) continue;
+    if (malos) { out.push({ id, que, s, total, ok: false, malos: true }); continue; }
     out.push({ id, que, s, total, ok: total > 0 && Math.abs(s - total) < 1 });
   }
   return out;
 }
 function textoSuma(r) {
-  if (!r.total) return `${r.que} suma ${pesos(r.s)}. Escriba arriba, en la 1.8, el monto total solicitado para comparar.`;
-  return r.ok ? `✓ ${r.que} suma ${pesos(r.s)}, igual al monto solicitado.` : `⚠ ${r.que} suma ${pesos(r.s)} y el monto solicitado es ${pesos(r.total)}: hay una diferencia de ${pesos(Math.abs(r.s - r.total))}.`;
+  const su = r.que.startsWith("Los ") ? "suman" : "suma";
+  if (r.malos) return `⚠ Hay montos escritos con letras o en otro formato. Corríjalos (por ejemplo 4,500,000) para poder comparar ${r.que.toLowerCase()} con el monto solicitado.`;
+  if (!r.total) return `${r.que} ${su} ${pesos(r.s)}. Escriba arriba, en la 1.8, el monto total solicitado para comparar.`;
+  return r.ok ? `✓ ${r.que} ${su} ${pesos(r.s)}, igual al monto solicitado.` : `⚠ ${r.que} ${su} ${pesos(r.s)} y el monto solicitado es ${pesos(r.total)}: hay una diferencia de ${pesos(Math.abs(r.s - r.total))}.`;
 }
 function actualizarSumas() {
   const rs = sumas();
@@ -114,7 +138,7 @@ function actualizarSumas() {
 }
 function grupoTexto(q, v) {
   const G = q.grupo;
-  const fila = f => G.campos.filter(c => lleno(f[c.k])).map(c => c.l + ": " + f[c.k]).join("; ");
+  const fila = f => G.campos.filter(c => lleno(f[c.k])).map(c => c.l + ": " + mostrarValor(c, f[c.k])).join("; ");
   return G.repetible ? (v.filas || []).map(fila).filter(Boolean).map((t, i) => (i + 1) + ") " + t).join(" ") : fila(v.g || {});
 }
 function elegido(id) { const v = val(id); if (v.salida) return null; return Array.isArray(v.v) ? v.v : (v.v ? [v.v] : []); }
@@ -159,7 +183,7 @@ function texto(q) {
   if (v.salida) partes.push("[" + v.salida + "]");
   if (Array.isArray(v.v)) partes.push(v.v.map(o => v.otros?.[o] ? `${o}: ${v.otros[o]}` : o).join("; "));
   else if (v.v) partes.push(v.otros?.[v.v] ? `${v.v}: ${v.otros[v.v]}` : v.v);
-  if (q.grupo) { const g = grupoTexto(q, v); if (g) partes.push(g); }
+  if (q.grupo && !(ELIGE[q.id] && modoDe(q, v) === "subir")) { const g = grupoTexto(q, v); if (g) partes.push(g); }
   if (lleno(v.extra)) partes.push("Algo más: " + v.extra);
   const arch = (S.a[q.id] || []).map(a => a.nombre);
   if (arch.length) partes.push("Archivos: " + arch.join(", "));
@@ -201,6 +225,8 @@ function arco(cx, cy, r, a0, a1) {
 }
 // abertura arriba a la derecha, como el isotipo
 const A0 = -50, A1 = 262;
+// el anillo más chico deja libre un círculo de radio 78 (de 150) para el porcentaje
+function anillosGrandes(svg, n) { const paso = n > 1 ? Math.min(17, (144 - 78) / (n - 1)) : 17; dibujarAnillos(svg, n, 150, 144, paso, Math.min(9, paso * .62)); }
 function dibujarAnillos(svg, n, cx, r0, paso, grosor) {
   svg.innerHTML = "";
   for (let i = 0; i < n; i++) {
@@ -222,7 +248,7 @@ function dibujarAnillos(svg, n, cx, r0, paso, grosor) {
 function llenarAnillos(svg, valores, actual) {
   svg.querySelectorAll(".a-lleno").forEach(p => {
     const i = +p.dataset.i, L = p.getTotalLength(), v = valores[i] ?? 0;
-    p.style.strokeDashoffset = L * (1 - v);
+    p.style.strokeDashoffset = L * (1 - v); p.style.opacity = v > 0 ? 1 : 0;
     p.setAttribute("stroke", i === actual ? "#FAB51B" : (v >= 1 ? "#FFFFFF" : "rgba(255,255,255,.75)"));
   });
 }
@@ -235,7 +261,14 @@ function pintarProgreso() {
   $("#pct").textContent = pct;
   if ($("#anilloMovil").children.length / 2 !== vis.length) dibujarAnillos($("#anilloMovil"), vis.length, 24, 22, 2.8, 1.8);
   llenarAnillos($("#anilloMovil"), vals, idx);
-  if ($("#anillos").children.length / 2 !== vis.length) { dibujarAnillos($("#anillos"), vis.length, 150, 140, 17, 9); requestAnimationFrame(() => llenarAnillos($("#anillos"), vals, idx)); }
+  if ($("#anillos").children.length / 2 !== vis.length) {
+    anillosGrandes($("#anillos"), vis.length); requestAnimationFrame(() => llenarAnillos($("#anillos"), vals, idx));
+  }
+  if (typeof S.paso === "number") {
+    const k = document.querySelector(".pantalla__cab .kicker"), t = `Pantalla ${S.paso + 1} de ${vis.length}`;
+    if (k && k.textContent !== t) k.textContent = t;
+    if ($("#movilPaso").textContent !== t) $("#movilPaso").textContent = t;
+  }
   pintarPasos(); pintarExpediente();
   document.querySelectorAll(".pregunta").forEach(el => {
     const q = porId[el.dataset.id]; if (!q) return;
@@ -293,9 +326,9 @@ function htmlPregunta(q) {
   const t = q.tipo;
   if (t === "corto") cuerpo = `<input class="campo" data-f="v" value="${esc(v.v)}" aria-label="${esc(q.texto)}">`;
   if (t === "largo") cuerpo = `<textarea class="campo" data-f="v" rows="4" aria-label="${esc(q.texto)}">${esc(v.v)}</textarea>`;
-  if (t === "numero") cuerpo = `<input class="campo campo--corto" data-f="v" inputmode="numeric" value="${esc(v.v)}" placeholder="0" aria-label="${esc(q.texto)}">`;
+  if (t === "numero") cuerpo = `<input class="campo campo--corto" data-f="v" data-valida="numero" inputmode="numeric" value="${esc(v.v)}" placeholder="0" aria-label="${esc(q.texto)}">`;
   if (t === "moneda") cuerpo = `<div class="moneda campo--corto"><input class="campo campo--moneda" data-f="v" data-valida="moneda" inputmode="decimal" value="${esc(v.v)}" placeholder="0.00" aria-label="${esc(q.texto)}"></div>`;
-  if (t === "fecha") cuerpo = `<input class="campo campo--corto" type="date" data-f="v" value="${esc(v.v)}" min="2026-11-01" max="2028-12-31" aria-label="${esc(q.texto)}">`;
+  if (t === "fecha") cuerpo = `<input class="campo campo--corto" type="date" data-f="v" data-valida="fecha" value="${esc(v.v)}" min="2026-11-01" max="2028-12-31" aria-label="${esc(q.texto)}">`;
   if (t === "unica" || t === "varias") {
     const sel = Array.isArray(v.v) ? v.v : (v.v ? [v.v] : []);
     cuerpo = `<div class="opciones" role="${t === "unica" ? "radiogroup" : "group"}" aria-label="${esc(q.texto)}">` + q.opciones.map(o => {
@@ -349,8 +382,28 @@ function modoDe(q, v) {
   if (q.grupo && grupoLleno(q, v)) return "llenar";
   return "";
 }
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+// horas de 6:00 a.m. a 10:00 p.m. cada media hora, siempre con a.m./p.m. y la parte del día
+const HORAS = Array.from({ length: 33 }, (_, k) => {
+  const m = 360 + k * 30, h = Math.floor(m / 60), mm = String(m % 60).padStart(2, "0");
+  const v = `${h % 12 || 12}:${mm} ${h < 12 ? "a.m." : "p.m."}`;
+  return [v, `${v} · ${h === 12 && mm === "00" ? "mediodía" : h < 12 ? "mañana" : h < 19 ? "tarde" : "noche"}`];
+});
+const minutos = v => { const m = /^(\d{1,2}):(\d{2}) ([ap])\.m\.$/.exec(v || ""); return m ? (+m[1] % 12 + (m[3] === "p" ? 12 : 0)) * 60 + +m[2] : null; };
+const fechaLarga = x => /^\d{4}-\d{2}-\d{2}$/.test(x || "") ? new Date(x + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }) : (x || "");
+const mostrarValor = (c, x) => c.t === "fecha" ? fechaLarga(x) : x;
+// avisos de un renglón (por ahora, horario de la 5.4)
+function avisosFila(q, f) {
+  const out = [];
+  if (q.id !== "5.4") return out;
+  const a = minutos(f.inicio), b = minutos(f.fin);
+  if (a != null && b != null && b <= a) out.push("La hora de término debe ser después de la hora de inicio.");
+  if (f.desde && f.hasta && f.hasta < f.desde) out.push("La última sesión debe ser en la misma fecha o después de la primera.");
+  if ([f.desde, f.hasta].some(x => x && (x < "2026-11-01" || x > "2028-12-31"))) out.push("Revise las fechas: deben quedar entre noviembre de 2026 y diciembre de 2028.");
+  return out;
+}
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-function tipoValida(c) { return c.t === "correo" ? "correo" : c.t === "tel" ? "tel" : c.t === "moneda" ? "moneda" : c.k === "cct" ? "cct" : c.k === "rfc" ? "rfc" : ""; }
+function tipoValida(c) { return c.t === "correo" ? "correo" : c.t === "tel" ? "tel" : c.t === "moneda" ? "moneda" : c.t === "numero" ? "numero" : c.k === "cct" ? "cct" : c.k === "rfc" ? "rfc" : ""; }
 function htmlCampo(c, valor, i) {
   const vl = tipoValida(c);
   const a = `data-g="${c.k}" data-fila="${i}" ${vl ? `data-valida="${vl}"` : ""} placeholder="${esc(c.ph ? "Ej. " + c.ph : "")}"`;
@@ -358,8 +411,15 @@ function htmlCampo(c, valor, i) {
   if (c.t === "largo") inp = `<textarea class="campo" rows="3" ${a}>${esc(valor)}</textarea>`;
   else if (c.t === "mes") inp = `<select class="campo" data-g="${c.k}" data-fila="${i}"><option value="">Elija el mes</option>${MESES.map(m => `<option ${valor === m ? "selected" : ""}>${m}</option>`).join("")}</select>`;
   else if (c.t === "moneda") inp = `<div class="moneda"><input class="campo campo--moneda" inputmode="decimal" value="${esc(valor)}" ${a}></div>`;
+  else if (c.t === "dias") {
+    const sel = String(valor || "").split(/,\s*/);
+    inp = `<div class="dias" role="group" aria-label="${esc(c.l)}">${DIAS.map(d => `<button type="button" class="dia ${sel.includes(d) ? "sel" : ""}" data-dia="${d}" data-g="${c.k}" data-fila="${i}" aria-pressed="${sel.includes(d)}" aria-label="${d}"><span class="dia__l" aria-hidden="true">${d.slice(0, 3)}</span></button>`).join("")}</div>`;
+  }
+  else if (c.t === "hora") inp = `<select class="campo" data-g="${c.k}" data-fila="${i}" aria-label="${esc(c.l)}"><option value="">Elija la hora</option>${(HORAS.some(h => h[0] === valor) || !valor ? HORAS : [[valor, valor], ...HORAS]).map(([v, t]) => `<option value="${esc(v)}" ${valor === v ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  else if (c.t === "fecha") inp = `<input class="campo" type="date" min="2026-11-01" max="2028-12-31" value="${esc(valor)}" data-g="${c.k}" data-fila="${i}" aria-label="${esc(c.l)}">`;
   else inp = `<input class="campo" ${c.t === "correo" ? 'type="email" inputmode="email"' : c.t === "tel" ? 'type="tel" inputmode="tel"' : c.t === "numero" ? 'inputmode="numeric"' : ""} value="${esc(valor)}" ${a}>`;
-  return `<label class="gcampo gcampo--${c.t}"><span>${esc(c.l)}</span>${inp}</label>`;
+  // los botones de días no van dentro de <label>: un clic en el rótulo marcaría el lunes
+  return c.t === "dias" ? `<div class="gcampo gcampo--dias"><span>${esc(c.l)}</span>${inp}</div>` : `<label class="gcampo gcampo--${c.t}"><span>${esc(c.l)}</span>${inp}</label>`;
 }
 function htmlGrupo(q, v) {
   const G = q.grupo, abierto = abiertos.has(q.id), filas = filasDe(q, v);
@@ -373,11 +433,140 @@ function htmlGrupo(q, v) {
       ${cuenta ? `<span class="grupo__cuenta">${cuenta}</span>` : ""}<span class="grupo__flecha" aria-hidden="true">${ICO.flecha}</span>
     </button>
     <div class="grupo__cuerpo" ${abierto ? "" : "hidden"}>
-      ${filas.map((f, i) => `<div class="grupo__fila ${G.repetible ? "grupo__fila--rep" : ""}">${G.repetible ? `<span class="grupo__num">${i + 1}</span>` : ""}${G.campos.map(c => htmlCampo(c, f[c.k], i)).join("")}${G.repetible && filas.length > 1 ? `<button type="button" class="grupo__quitar" data-fila-quitar="${i}" aria-label="Quitar renglón ${i + 1}">×</button>` : ""}</div>`).join("")}
+      ${filas.map((f, i) => `<div class="grupo__fila ${G.repetible ? "grupo__fila--rep" : ""}">${G.repetible ? `<span class="grupo__num">${i + 1}</span>` : ""}${htmlAuto(q, f, i)}${G.campos.map(c => htmlCampo(c, f[c.k], i)).join("")}${htmlAvisosFila(q, f, i)}${G.repetible && filas.length > 1 ? `<button type="button" class="grupo__quitar" data-fila-quitar="${i}" aria-label="Quitar renglón ${i + 1}">×</button>` : ""}</div>`).join("")}
       ${G.repetible ? `<button type="button" class="mas" data-fila-agregar>+ ${esc(G.agregar)}</button>` : ""}
       ${q.id === "1.8" || q.id === "1.4" ? `<p class="suma" data-suma="${q.id}" hidden></p>` : ""}
     </div>
   </div>`;
+}
+/* ---------- personas ya registradas: se ofrecen para llenar en automático ---------- */
+const normal = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+const esPersona = q => !!(q.grupo && q.grupo.campos.some(c => c.k === "nombre"));
+// forma más cuidada de un nombre (con mayúsculas y acentos, sin espacios dobles)
+const calidad = t => (String(t).match(/[A-ZÁÉÍÓÚÑ]/g) || []).length + (String(t).match(/[áéíóúñÁÉÍÓÚÑ]/g) || []).length - (/\s{2,}/.test(t) ? 3 : 0);
+const rolesDe = f => f._roles || (f._rol ? [f._rol] : []);
+const sinRol = c => String(c || "").replace(/\s*\((responsable|titular)[^)]*\)\s*$/i, "").trim();
+function personas() {
+  const m = new Map();
+  for (const q of todas) {
+    if (!esPersona(q) || !visible(q) || val(q.id).salida) continue;
+    for (const f of filasDe(q, val(q.id))) {
+      const k = normal(f.nombre); if (!k) continue;
+      const nombre = f.nombre.trim().replace(/\s+/g, " ");
+      const p = m.get(k) || { k, nombre };
+      if (calidad(nombre) > calidad(p.nombre)) p.nombre = nombre;
+      // el cargo de un renglón agregado por puesto en la 3.5 lleva «(puesto)»: no se copia a otras preguntas
+      const cargo = rolesDe(f).length ? (f._auto ? "" : sinRol(f.cargo)) : f.cargo;
+      for (const [dst, src] of [["cargo", cargo], ["correo", f.correo], ["telefono", f.telefono || f.celular]])
+        if (!lleno(p[dst]) && lleno(src)) p[dst] = String(src).trim();
+      m.set(k, p);
+    }
+  }
+  return [...m.values()];
+}
+function htmlAuto(q, f, i) {
+  if (!esPersona(q)) return "";
+  const usados = new Set(filasDe(q, val(q.id)).map(x => normal(x.nombre)));
+  const ps = personas().filter(p => !usados.has(p.k));
+  const vacio = !lleno(f.nombre);
+  return `<div class="auto" data-auto-fila="${i}" ${ps.length && vacio ? "" : "hidden"}><span class="auto__t">¿Es alguien que ya registró? Elíjalo y sus datos se llenan solos:</span><div class="auto__ops">${ps.map(p => `<button type="button" class="auto__op" data-persona="${esc(p.k)}" data-fila="${i}"><b>${esc(p.nombre)}</b>${p.cargo ? `<small>${esc(p.cargo)}</small>` : ""}</button>`).join("")}</div></div>`;
+}
+function refrescarAuto(q) {
+  const el = document.querySelector(`.pregunta[data-id="${q.id}"]`); if (!el || !esPersona(q)) return;
+  const filas = filasDe(q, val(q.id));
+  el.querySelectorAll("[data-auto-fila]").forEach(a => {
+    const i = +a.dataset.autoFila, t = document.createElement("div"); t.innerHTML = htmlAuto(q, filas[i] || {}, i);
+    const n = t.firstElementChild; if (n.outerHTML !== a.outerHTML) a.replaceWith(n);
+  });
+}
+// al cambiar un nombre, las franjas de las demás preguntas de persona visibles se ponen al día
+function refrescarAutoOtras(q) { document.querySelectorAll(".pregunta").forEach(el => { const o = porId[el.dataset.id]; if (o && o !== q && esPersona(o)) refrescarAuto(o); }); }
+const cargoConRoles = (cargo, roles) => {
+  const r = roles.map(x => x.charAt(0).toLowerCase() + x.slice(1)).join(" y ");
+  return lleno(cargo) ? `${sinRol(cargo)} (${r})` : roles.join(" y ");
+};
+function llenarPersona(q, i, k) {
+  const p = personas().find(x => x.k === k); if (!p) { refrescarAuto(q); return; }
+  const claves = q.grupo.campos.map(c => c.k);
+  setR(q.id, v => {
+    let f;
+    if (q.grupo.repetible) { v.filas = v.filas && v.filas.length ? v.filas : [{}]; f = v.filas[i] = v.filas[i] || {}; }
+    else f = v.g = v.g || {};
+    f.nombre = p.nombre; delete f._auto;
+    if (claves.includes("cargo") && p.cargo) f.cargo = rolesDe(f).length ? cargoConRoles(p.cargo, rolesDe(f)) : p.cargo;
+    if (claves.includes("correo") && p.correo) f.correo = p.correo;
+    for (const t of ["telefono", "celular"]) if (claves.includes(t) && p.telefono) f[t] = p.telefono;
+    delete v.salida;
+  });
+  abiertos.add(q.id);
+  redibujar(q, `.grupo__fila:nth-of-type(${i + 1}) .campo`);
+  refrescarAutoOtras(q);
+  if (Object.values(ROLES_35).includes(q.id)) seguirAsistentes();
+}
+// 3.5: al marcar un puesto, se agrega esa persona con los datos que ya dio en la 3.1–3.4.
+// Un renglón puede tener varios puestos (_roles); _auto = lo agregó la página y nadie lo ha editado.
+const ROLES_35 = { "Responsable del proyecto": "3.1", "Responsable técnico": "3.2", "Titular": "3.3", "Responsable administrativo": "3.4" };
+const datosRol = rol => val(ROLES_35[rol]).salida ? {} : (val(ROLES_35[rol]).g || {});
+// Los renglones automáticos (_auto) se recalculan siempre a partir de los puestos marcados y de la 3.1–3.4.
+// Los renglones escritos o editados a mano se respetan; conservan sus puestos mientras sigan marcados.
+const ORDEN_ROLES = Object.keys(ROLES_35);
+function recalcularAsistentes(v, limpiar) {
+  const marcados = ORDEN_ROLES.filter(r => (Array.isArray(v.v) ? v.v : []).includes(r));
+  // fichas de prueba con el campo viejo _rol
+  (v.filas || []).forEach(f => {
+    if (!f._rol) return;
+    if (!lleno(f.nombre) || normal(f.nombre) === normal(datosRol(f._rol).nombre)) f._auto = true;
+    f._roles = [...new Set([...(f._roles || []), f._rol])]; delete f._rol;
+  });
+  const manuales = (v.filas || []).filter(f => !f._auto && Object.keys(f).some(k => k[0] !== "_" && lleno(f[k])));
+  manuales.forEach(f => {
+    const antes = rolesDe(f);
+    const ahora = marcados.filter(r => antes.includes(r) || (lleno(f.nombre) && normal(f.nombre) === normal(datosRol(r).nombre)));
+    if (antes.some(r => !ahora.includes(r))) f.cargo = sinRol(f.cargo);
+    if (ahora.length) f._roles = ahora; else delete f._roles;
+  });
+  const cubiertos = new Set(manuales.flatMap(rolesDe)), auto = [];
+  for (const r of marcados) {
+    if (cubiertos.has(r)) continue;
+    const g = datosRol(r), k = normal(g.nombre);
+    const mismo = k && auto.find(f => normal(f.nombre) === k);
+    if (mismo) { mismo._roles.push(r); mismo.cargo = cargoConRoles(mismo._cargo, mismo._roles); continue; }
+    auto.push(k ? { nombre: g.nombre.trim(), _cargo: g.cargo || "", cargo: cargoConRoles(g.cargo, [r]), celular: (g.telefono || "").trim(), _roles: [r], _auto: true }
+               : { cargo: r, _roles: [r], _auto: true });
+  }
+  auto.forEach(f => delete f._cargo);
+  // cada renglón se queda en su lugar: el automático nuevo ocupa el sitio del anterior con el mismo puesto;
+  // los renglones vacíos agregados a mano se conservan, salvo al marcar o desmarcar un puesto
+  const filas = [], viejos = v.filas || [], puestos = new Set();
+  for (const f of viejos) {
+    if (manuales.includes(f)) filas.push(f);
+    else if (f._auto) { const n = auto.find(a => !puestos.has(a) && rolesDe(a).some(r => rolesDe(f).includes(r))); if (n) { filas.push(n); puestos.add(n); } }
+    else if (!limpiar) filas.push(f);
+  }
+  auto.forEach(a => { if (!puestos.has(a)) filas.push(a); });
+  v.filas = filas;
+}
+function repintar(q) {
+  const el = document.querySelector(`.pregunta[data-id="${q.id}"]`); if (!el) return;
+  const t = document.createElement("div"); t.innerHTML = htmlPregunta(q); const n = t.firstElementChild; el.replaceWith(n);
+  if (vigia) vigia.observe(n);
+  n.querySelectorAll("[data-valida]").forEach(validar);
+  n.classList.toggle("es-contestada", contestada(q) && !val(q.id).salida);
+  n.classList.toggle("es-juarez", !!val(q.id).salida);
+}
+// si cambian los datos de la 3.1–3.4, se recalculan los renglones automáticos de la 3.5
+function seguirAsistentes() {
+  const v = S.r["3.5"];
+  if (!v || !(Array.isArray(v.v) && v.v.some(r => ROLES_35[r]))) return;
+  const antes = JSON.stringify(v.filas);
+  recalcularAsistentes(v);
+  if (JSON.stringify(v.filas) === antes) return;
+  ls.set("ficha_" + S.codigo, { r: S.r, t: Date.now() });
+  repintar(porId["3.5"]);
+}
+function htmlAvisosFila(q, f, i) {
+  const a = avisosFila(q, f);
+  return `<p class="fila__aviso" data-aviso-fila="${i}" ${a.length ? "" : "hidden"}>${esc(a.join(" "))}</p>`;
 }
 function htmlExtra(q, v) {
   if (lleno(v.extra) || extras.has(q.id))
@@ -429,9 +618,10 @@ function mostrar(paso, foco) {
   $("#btnAnterior").disabled = paso === 0 || paso === "fin";
   const sig = $("#btnSiguiente");
   sig.hidden = paso === "fin";
-  sig.textContent = paso === "repaso" ? (S.estado === "Enviado" ? "Enviar de nuevo" : "Enviar a DESEC") : (paso === vis.length - 1 ? "Revisar y enviar →" : "Siguiente →");
+  sig.textContent = paso === "repaso" ? (S.estado === "Enviado" ? "Enviar de nuevo" : "Enviar a DESEC") : (paso === vis.length - 1 ? (innerWidth < 861 ? "Revisar →" : "Revisar y enviar →") : "Siguiente →");
   sig.className = "btn " + (paso === "repaso" ? "btn--ambar" : "btn--azul");
   pintarProgreso();
+  ls.set("ficha_paso_" + S.codigo, paso);
   if (foco) { const t = document.getElementById("q-" + foco.replace(".", "-")); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); const i = t.querySelector("input,textarea,button"); i && setTimeout(() => i.focus({ preventScroll: true }), 400); return; } }
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   $("#principal").scrollTop = 0;
@@ -497,10 +687,12 @@ const fmt = c => c ? c.slice(0, 5) + "-" + c.slice(5) : "";
 /* ---------- revisión de formatos (avisa, no bloquea) ---------- */
 const REGLAS = {
   correo: v => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v) ? "" : "Revise el correo: debe verse como nombre@institucion.mx",
-  tel: v => v.replace(/\D/g, "").length === 10 ? "" : "El teléfono debe tener 10 dígitos",
+  tel: v => { const d = v.replace(/\D/g, ""); return d.length === 10 || (d.length === 12 && d.startsWith("52")) ? "" : "El teléfono debe tener 10 dígitos"; },
+  numero: v => /^[0-9][0-9,]*(\.[0-9]+)?$/.test(v.replace(/\s/g, "")) ? "" : "Escriba solo el número con cifras, por ejemplo 180",
   cct: v => /^[0-9]{2}[A-Z]{3}[0-9]{4}[A-Z]$/i.test(v.replace(/\s/g, "")) ? "" : "La clave CCT tiene 10 caracteres, por ejemplo 08DST0055X",
-  rfc: v => /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/i.test(v.replace(/\s/g, "")) ? "" : "El RFC tiene 12 o 13 caracteres, por ejemplo XAXX010101000",
-  moneda: v => /^[\s$]*[0-9][0-9,]*(\.[0-9]{1,2})?\s*$/.test(v) ? "" : "Escriba solo la cantidad, por ejemplo 4,500,000"
+  rfc: v => /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/i.test(v.replace(/[\s-]/g, "")) ? "" : "El RFC tiene 12 o 13 caracteres, por ejemplo XAXX010101000",
+  moneda: v => /^(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/.test(v.replace(/[\s$]/g, "")) ? "" : "Escriba solo la cantidad con cifras, por ejemplo 4,500,000",
+  fecha: v => !/^\d{4}-\d{2}-\d{2}$/.test(v) || v < "2026-11-01" || v > "2028-12-31" ? "La fecha debe quedar entre noviembre de 2026 y diciembre de 2028" : ""
 };
 function validar(el) {
   const r = REGLAS[el.dataset.valida]; if (!r) return;
@@ -512,7 +704,8 @@ function validar(el) {
   else if (m) m.remove();
 }
 function formatoMoneda(el) {
-  const n = numero(el.value); if (!n && !/0/.test(el.value)) return;
+  if (REGLAS.moneda(String(el.value || "").trim())) return; // no es una cantidad: se deja tal cual y se avisa
+  const n = numero(String(el.value).replace(/\s/g, "")); if (!n && !/0/.test(el.value)) return;
   const f = n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
   if (f !== el.value) { el.value = f; el.dispatchEvent(new Event("input", { bubbles: true })); }
 }
@@ -524,16 +717,29 @@ document.addEventListener("focusout", e => {
 function avisosFormato() {
   const out = [];
   for (const q of todas.filter(visible)) {
-    const v = val(q.id); if (v.salida || !q.grupo) continue;
+    const v = val(q.id); if (v.salida) continue;
+    if ((q.tipo === "numero" || q.tipo === "moneda" || q.tipo === "fecha") && lleno(v.v) && REGLAS[q.tipo](String(v.v).trim())) out.push({ q, txt: REGLAS[q.tipo](String(v.v).trim()) });
+    if (!q.grupo) continue;
     filasDe(q, v).forEach((f, i) => q.grupo.campos.forEach(c => {
       const t = tipoValida(c), x = String(f[c.k] || "").trim();
       if (t && x && REGLAS[t](x)) out.push({ q, txt: `${c.l}${q.grupo.repetible ? " (renglón " + (i + 1) + ")" : ""}: ${REGLAS[t](x)}` });
     }));
+    filasDe(q, v).forEach((f, i) => avisosFila(q, f).forEach(a => out.push({ q, txt: (q.grupo.repetible ? `Renglón ${i + 1}: ` : "") + a })));
   }
   return out;
 }
 
 /* ================= eventos del formulario ================= */
+function actualizarFila(q, el) {
+  const fila = el.closest(".grupo__fila"); if (!fila) return;
+  const i = +el.dataset.fila, f = filasDe(q, val(q.id))[i] || {};
+  const av = fila.querySelector("[data-aviso-fila]");
+  if (av) { const a = avisosFila(q, f); av.hidden = !a.length; av.textContent = a.join(" "); }
+  if (el.dataset.g === "nombre") {
+    const au = fila.querySelector("[data-auto-fila]"); if (au) au.hidden = lleno(el.value) || !au.querySelector(".auto__op");
+    refrescarAutoOtras(q);
+  }
+}
 function q_(el) { const a = el.closest(".pregunta"); return a ? porId[a.dataset.id] : null; }
 function setR(id, f) { const v = S.r[id] = S.r[id] || {}; f(v); cambio(); }
 function refrescarCondiciones() {
@@ -550,14 +756,20 @@ function refrescarCondiciones() {
 }
 document.addEventListener("input", e => {
   const el = e.target, q = q_(el); if (!q) return;
+  if (el.dataset.f !== "extra" && val(q.id).salida && lleno(el.value)) {
+    delete S.r[q.id].salida;
+    const a = el.closest(".pregunta"); a.classList.remove("es-juarez");
+    a.querySelectorAll("[data-salida].sel").forEach(c => { c.classList.remove("sel"); c.setAttribute("aria-pressed", "false"); });
+  }
   if (el.dataset.f) setR(q.id, v => { v[el.dataset.f] = el.value; });
   else if (el.dataset.g) {
     const i = +el.dataset.fila;
     setR(q.id, v => {
-      if (q.grupo.repetible) { v.filas = v.filas && v.filas.length ? v.filas : [{}]; v.filas[i] = v.filas[i] || {}; v.filas[i][el.dataset.g] = el.value; }
+      if (q.grupo.repetible) { v.filas = v.filas && v.filas.length ? v.filas : [{}]; v.filas[i] = v.filas[i] || {}; v.filas[i][el.dataset.g] = el.value; delete v.filas[i]._auto; }
       else { v.g = v.g || {}; v.g[el.dataset.g] = el.value; }
     });
-    actualizarGrupo(q);
+    actualizarGrupo(q); actualizarFila(q, el);
+    if (Object.values(ROLES_35).includes(q.id)) seguirAsistentes();
   }
   else if (el.dataset.c) setR(q.id, v => { v.c = v.c || {}; v.c[el.dataset.c] = el.value; });
   else if (el.dataset.otro) setR(q.id, v => { v.otros = v.otros || {}; v.otros[el.dataset.otro] = el.value; });
@@ -568,9 +780,11 @@ document.addEventListener("change", e => {
     setR(q.id, v => {
       if (el.type === "radio") v.v = el.value;
       else { const s = new Set(Array.isArray(v.v) ? v.v : []); el.checked ? s.add(el.value) : s.delete(el.value); v.v = q.opciones.map(o => o.v).filter(o => s.has(o)); }
+      if (q.id === "3.5" && ROLES_35[el.value]) { recalcularAsistentes(v, true); if (el.checked) abiertos.add(q.id); }
       if (v.salida) delete v.salida;
     });
-    redibujar(q);
+    const conOtro = el.checked && (q.opciones.find(o => o.v === el.value) || {}).otro;
+    redibujar(q, conOtro ? ".opcion__otro" : `input[value="${CSS.escape(el.value)}"]`);
     refrescarCondiciones(); pintarProgreso();
     if (el.type === "radio") { const a = document.querySelector(`.pregunta[data-id="${q.id}"]`); a && siguienteLlamado(a); }
   }
@@ -591,6 +805,18 @@ function redibujar(q, foco) {
 document.addEventListener("click", e => {
   const t = e.target.closest("button,[data-ir]"); if (!t) return;
   const q = q_(t);
+  if (t.dataset.dia && q) {
+    const i = +t.dataset.fila, on = !t.classList.contains("sel");
+    t.classList.toggle("sel", on); t.setAttribute("aria-pressed", on);
+    const elegidos = [...t.parentElement.querySelectorAll(".dia.sel")].map(b => b.dataset.dia);
+    setR(q.id, v => {
+      if (q.grupo.repetible) { v.filas = v.filas && v.filas.length ? v.filas : [{}]; v.filas[i] = v.filas[i] || {}; v.filas[i][t.dataset.g] = elegidos.join(", "); }
+      else { v.g = v.g || {}; v.g[t.dataset.g] = elegidos.join(", "); }
+      delete v.salida;
+    });
+    actualizarGrupo(q); return;
+  }
+  if (t.dataset.persona && q) { llenarPersona(q, +t.dataset.fila, t.dataset.persona); return; }
   if (t.dataset.modo && q) {
     setR(q.id, v => { v.modo = t.dataset.modo; });
     if (t.dataset.modo === "llenar") abiertos.add(q.id);
@@ -599,18 +825,23 @@ document.addEventListener("click", e => {
     const abrir = !abiertos.has(q.id); abrir ? abiertos.add(q.id) : abiertos.delete(q.id);
     const g = t.closest(".grupo"), cuerpo = g.querySelector(".grupo__cuerpo");
     g.classList.toggle("abierto", abrir); t.setAttribute("aria-expanded", abrir); cuerpo.hidden = !abrir;
-    if (abrir) { const i = cuerpo.querySelector("input,textarea,select"); i && i.focus({ preventScroll: true }); }
+    if (abrir) { refrescarAuto(q); const i = cuerpo.querySelector("input,textarea,select"); i && i.focus({ preventScroll: true }); }
   } else if (t.hasAttribute("data-fila-agregar") && q) {
     setR(q.id, v => { v.filas = v.filas && v.filas.length ? v.filas : [{}]; v.filas.push({}); });
     redibujar(q, ".grupo__fila:last-of-type input, .grupo__fila:last-of-type select");
   } else if (t.dataset.filaQuitar !== undefined && q) {
-    setR(q.id, v => { v.filas.splice(+t.dataset.filaQuitar, 1); });
+    setR(q.id, v => {
+      const [quitada] = v.filas.splice(+t.dataset.filaQuitar, 1);
+      // en la 3.5, quitar el renglón de un puesto también desmarca ese puesto
+      if (quitada && Array.isArray(v.v)) { for (const r of rolesDe(quitada)) if (!v.filas.some(f => rolesDe(f).includes(r))) v.v = v.v.filter(x => x !== r); if (q.id === "3.5") recalcularAsistentes(v); }
+    });
     redibujar(q, "[data-fila-agregar]");
   } else if (t.hasAttribute("data-extra") && q) {
     extras.add(q.id); redibujar(q, "[data-f=extra]");
   } else if (t.dataset.salida && q) {
     setR(q.id, v => { v.salida = v.salida === t.dataset.salida ? undefined : t.dataset.salida; if (!v.salida) delete v.salida; });
     redibujar(q, `[data-salida="${CSS.escape(t.dataset.salida)}"]`); refrescarCondiciones(); pintarProgreso();
+    if (Object.values(ROLES_35).includes(q.id)) seguirAsistentes();
   } else if (t.dataset.quitar && q) quitarArchivo(q, t.dataset.quitar);
   else if (t.hasAttribute("data-agregar-enlace") && q) {
     const inp = t.parentElement.querySelector("[data-enlace]"); const u = inp.value.trim();
@@ -649,6 +880,10 @@ document.addEventListener("focusout", e => {
 });
 function irA(id) { const vis = pantallasVisibles(); const i = vis.findIndex(p => p.n === porId[id].pantalla); mostrar(i, id); }
 
+document.addEventListener("focusin", e => {
+  const el = e.target; if (!el.matches?.(".grupo__cuerpo input, .grupo__cuerpo select, .grupo__cuerpo textarea")) return;
+  const q = q_(el); q && refrescarAuto(q);
+});
 /* ---------- arrastrar y soltar ---------- */
 document.addEventListener("dragover", e => { const z = e.target.closest?.(".zona"); if (z) { e.preventDefault(); z.classList.add("sobre"); } });
 document.addEventListener("dragleave", e => { const z = e.target.closest?.(".zona"); z && z.classList.remove("sobre"); });
@@ -720,7 +955,7 @@ async function enviar() {
     clearTimeout(tGuardar); pendiente = false;
     await api({ accion: "enviar", codigo: S.codigo, respuestas: S.r, resumen: resumen() });
     S.estado = "Enviado"; mostrar("fin");
-    const svg = $("#anilloFin"); dibujarAnillos(svg, 7, 150, 140, 17, 9);
+    const svg = $("#anilloFin"); anillosGrandes(svg, 7);
     svg.querySelectorAll(".a-fondo").forEach(p => p.setAttribute("stroke", "#E3DCCD"));
     requestAnimationFrame(() => setTimeout(() => svg.querySelectorAll(".a-lleno").forEach((p, i) => { p.style.transitionDelay = i * 90 + "ms"; p.style.strokeDashoffset = 0; p.setAttribute("stroke", i === 6 ? "#FAB51B" : "#003B7C"); }), 60));
   } catch (e) { aviso("No se pudo enviar: " + e.message + ". Intente de nuevo; sus respuestas están guardadas."); }
@@ -805,9 +1040,10 @@ async function abrir(codigo, nuevo) {
   S.codigo = codigo; S.r = r.respuestas || {}; S.a = r.archivos || {}; S.estado = r.estado || "En llenado";
   const loc = ls.get("ficha_" + codigo);
   if (loc && loc.r && JSON.stringify(loc.r) !== JSON.stringify(S.r) && Object.keys(loc.r).length >= Object.keys(S.r).length) { S.r = loc.r; pendiente = true; setTimeout(guardar, 500); }
+  if (migrar()) { ls.set("ficha_" + codigo, { r: S.r, t: Date.now() }); pendiente = true; setTimeout(guardar, 500); }
   $("#portada").hidden = true; $("#app").hidden = false;
   $("#codigoTxt").textContent = S.u; $("#instTxt").textContent = S.inst;
-  dibujarAnillos($("#anillos"), pantallasVisibles().length, 150, 140, 17, 9);
+  anillosGrandes($("#anillos"), pantallasVisibles().length);
   dibujarAnillos($("#anilloMovil"), pantallasVisibles().length, 24, 22, 2.8, 1.8);
   const p = ls.get("ficha_paso_" + codigo);
   mostrar(nuevo ? 0 : (p ?? 0));

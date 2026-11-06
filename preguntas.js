@@ -754,7 +754,7 @@ window.FORM = {
      "id": "3.5",
      "texto": "¿Quiénes asistirían a la sesión de trabajo en Ciudad Juárez (17 al 18 de noviembre)?",
      "tipo": "varias",
-     "ayuda": "La sesión dura unas dos horas por proyecto. Es muy útil que asista el responsable técnico.",
+     "ayuda": "La sesión dura unas dos horas por proyecto. Es muy útil que asista el responsable técnico. Al marcar a una persona que ya registró arriba, sus datos se llenan solos.",
      "cond": null,
      "obligatoria": false,
      "opciones": [
@@ -1137,7 +1137,7 @@ window.FORM = {
      "id": "5.4",
      "texto": "¿Cuándo y dónde se darán las sesiones?",
      "tipo": "unica",
-     "ayuda": "Ejemplo: «Martes y jueves de 14:00 a 16:00 h, de febrero a junio de 2027, en el aula de medios».\nAdjunte el calendario de sesiones (puede usar la hoja «Plantilla de calendario»).",
+     "ayuda": "Ejemplo: martes y jueves de 2:00 p.m. a 4:00 p.m., del 2 de febrero al 25 de junio de 2027, en el aula de medios. Si hay varios grupos u horarios, agregue un renglón para cada uno.\nAdjunte el calendario de sesiones si ya lo tiene (puede usar la «Plantilla de calendario»).",
      "cond": {
       "seccion": "formacion"
      },
@@ -1169,27 +1169,39 @@ window.FORM = {
      },
      "grupo": {
       "titulo": "Días, horario y lugar",
-      "repetible": false,
-      "agregar": "",
+      "repetible": true,
+      "agregar": "Agregar otro horario o grupo",
       "reemplaza": false,
       "campos": [
        {
         "k": "dias",
-        "l": "Días",
-        "t": "texto",
-        "ph": "Martes y jueves"
+        "l": "Días de la semana",
+        "t": "dias",
+        "ph": ""
        },
        {
-        "k": "horario",
-        "l": "Horario",
-        "t": "texto",
-        "ph": "14:00 a 16:00 h"
+        "k": "inicio",
+        "l": "Hora de inicio",
+        "t": "hora",
+        "ph": ""
        },
        {
-        "k": "periodo",
-        "l": "Periodo",
-        "t": "texto",
-        "ph": "Febrero a junio de 2027"
+        "k": "fin",
+        "l": "Hora de término",
+        "t": "hora",
+        "ph": ""
+       },
+       {
+        "k": "desde",
+        "l": "Primera sesión",
+        "t": "fecha",
+        "ph": ""
+       },
+       {
+        "k": "hasta",
+        "l": "Última sesión",
+        "t": "fecha",
+        "ph": ""
        },
        {
         "k": "lugar",
