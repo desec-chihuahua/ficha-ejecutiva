@@ -96,11 +96,11 @@
       alimentaciones.push({ li, halo, nucleo, L: halo.getTotalLength() });
     });
     if (!reducido) { let k = 0; const g1 = gen;
-      const ciclo = () => { if (g1 !== gen) return; alimentar(alimentaciones[k++ % 4]); setTimeout(ciclo, k % 4 ? 950 : 1900); };
+      const ciclo = () => { if (g1 !== gen) return; alimentar(alimentaciones[k++ % 4]); setTimeout(ciclo, k % 4 ? 1190 : 2375); };
       setTimeout(ciclo, primeraVez ? 1600 : 400); primeraVez = false; }
   }
   let alimentaciones = [], primeraVez = true;
-  function encender(li) { li.classList.add('vivo'); clearTimeout(li._t); li._t = setTimeout(() => li.classList.remove('vivo'), 750); }
+  function encender() {}   // los cuadros STEM ya no se iluminan
   function alimentar(a) {
     if (!a) return;
     if (!a.halo) return encender(a.li);
@@ -108,7 +108,7 @@
     let fin;
     [a.halo, a.nucleo].forEach(p => {
       p.style.opacity = 1; p.style.strokeDasharray = `${cola} ${L + cola * 2}`;
-      fin = p.animate([{ strokeDashoffset: cola }, { strokeDashoffset: -L }], { duration: 720, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'both' });
+      fin = p.animate([{ strokeDashoffset: cola }, { strokeDashoffset: -L }], { duration: 900, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'both' });
     });
     fin.onfinish = () => { a.halo.style.opacity = a.nucleo.style.opacity = 0; encender(a.li); };
   }
@@ -125,14 +125,14 @@
     const haciaPanel = Math.hypot(a[0] - c.x, a[1] - c.y) > Math.hypot(b[0] - c.x, b[1] - c.y);
     const cola = 48 / s, punta = 10 / s, L = z.L;
     const desde = haciaPanel ? cola : -L, hasta = haciaPanel ? -L : cola;
-    const dur = Math.max(900, L * s / 240 * 1000);
+    const dur = Math.max(1125, L * s / 192 * 1000);
     const ajuste = haciaPanel ? punta - cola : 0;          // la chispa blanca va al frente del pulso
     const piezas = [['pulso pulso--halo', cola, 0], ['pulso pulso--nucleo', cola, 0], ['pulso pulso--chispa', punta, ajuste]].map(([cl, largo, aj]) => {
       const p = el('path', { class: cl, d: z.el.getAttribute('d') }, capa);
       p.style.strokeDasharray = `${largo} ${L + cola * 2}`;
       return p.animate([{ strokeDashoffset: desde + aj }, { strokeDashoffset: hasta + aj }], { duration: dur, delay: retraso || 0, easing: 'cubic-bezier(.3,0,.7,1)', fill: 'both' });
     });
-    if (!z0 && Math.random() < .35) { pulso(capa, g0, z, 170); if (Math.random() < .5) pulso(capa, g0, z, 340); }   // ráfagas
+    if (!z0 && Math.random() < .35) { pulso(capa, g0, z, 210); if (Math.random() < .5) pulso(capa, g0, z, 425); }   // ráfagas
     piezas[1].onfinish = () => {
       piezas.forEach(x => x.effect.target.remove());
       const [ex, ey] = haciaPanel ? z.t.p[z.t.p.length - 1] : z.t.p[0];
