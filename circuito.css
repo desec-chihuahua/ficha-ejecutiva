@@ -1,0 +1,82 @@
+/* ---------- Portada «Circuito Juárez» ---------- */
+.placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible;
+  --capa-logos:radial-gradient(48vw 210px at 0 0,transparent 55%,#000 100%);
+  -webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 34%,#000 47%),var(--capa-logos);
+          mask-image:linear-gradient(90deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 34%,#000 47%),var(--capa-logos);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+#nota{color:var(--ok)}
+.placa .fondo{fill:#003B7C;fill-opacity:.028}
+.placa .rio{fill:none;stroke:#2F7BD0;stroke-opacity:.38;stroke-width:1.6;stroke-dasharray:1 5;stroke-linecap:round}
+.placa .rio-borde{fill:none;stroke:#003B7C;stroke-opacity:.16;stroke-width:1}
+.placa .traza{fill:none;stroke:#003B7C;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.placa .k1{stroke-opacity:.17;stroke-width:1}
+.placa .k2{stroke-opacity:.26;stroke-width:1.4}
+.placa .k3{stroke-opacity:.34;stroke-width:2}
+.placa .via{fill:#F7F8FA;stroke:#003B7C;stroke-opacity:.38;stroke-width:1.1}
+.placa .pin{fill:#003B7C;fill-opacity:.32}
+.placa .pin-pad{fill:#F7F8FA;stroke:#003B7C;stroke-opacity:.4;stroke-width:1.1}
+.placa .pulso{fill:none;stroke:#FAB51B;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.placa .pulso--halo{stroke-width:9;stroke-opacity:.34;filter:blur(2.5px)}
+.placa .pulso--chispa{stroke:#FFF8E1;stroke-width:1.6}
+.placa .destello{fill:none;stroke:#FAB51B;stroke-width:1.6}
+.placa .pulso--nucleo{stroke-width:2.6;stroke:#FFB800}
+.placa .rotulo{font:600 12px Poppins,sans-serif;letter-spacing:.14em;fill:#003B7C;fill-opacity:.42;text-transform:uppercase}
+.placa .encendida{stroke:#FAB51B!important;stroke-opacity:.9!important}
+
+/* composición: título y acceso a la izquierda; la placa manda a la derecha */
+.portada--circuito .portada__cuerpo{grid-template-columns:minmax(0,470px) minmax(0,1fr);gap:clamp(32px,6vw,120px)}
+.portada--circuito .portada__titulo{font-size:clamp(40px,4.1vw,60px);margin:12px 0 26px}
+.portada--circuito .portada__panel{position:relative;padding:26px}
+.portada__placa{align-self:end;justify-self:center;pointer-events:auto;padding-bottom:2vh}
+/* componentes STEM montados sobre la placa */
+.stem{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.stem li{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;
+  padding:16px 14px 12px;border-radius:10px;background:rgba(247,248,250,.88);outline:1px dashed rgba(0,59,124,.28);outline-offset:-1px;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.stem svg{width:64px;height:30px;overflow:visible}
+.stem .pata{stroke:#003B7C;stroke-opacity:.55;stroke-width:2;fill:none;stroke-linecap:round}
+.stem .cuerpo{fill:#00264F}
+.stem .cuerpo--linea{fill:none;stroke:#00264F;stroke-width:3;stroke-linecap:round}
+.stem .seda{fill:none;stroke:#fff;stroke-opacity:.75;stroke-width:1.4}
+.stem circle.seda{fill:#fff;stroke:none}
+.stem .ref{font:600 12px Poppins,sans-serif;letter-spacing:.12em;color:#6B7686;margin-top:6px}
+.stem b{font-size:14px;font-weight:700;color:var(--profundo);line-height:1.2}
+.stem .led{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#C9D2DD;
+  transition:background .9s ease,box-shadow .9s ease}
+.stem li{transition:outline-color .9s ease,box-shadow .9s ease,background .9s ease}
+.stem .pata,.stem .cuerpo,.stem .cuerpo--linea{transition:stroke .9s ease,fill .9s ease,stroke-opacity .9s ease}
+.stem li.vivo{outline:1.5px solid #FAB51B;background:radial-gradient(120% 90% at 50% 0,rgba(255,244,217,.98),rgba(255,251,240,.94));
+  box-shadow:0 0 0 4px rgba(250,181,27,.16),0 14px 34px -10px rgba(250,181,27,.55);transition-duration:.12s}
+.stem li.vivo .led{background:#FAB51B;box-shadow:0 0 0 3px rgba(250,181,27,.25),0 0 14px rgba(250,181,27,.9);transition-duration:.12s}
+.stem li.vivo .pata{stroke:#E39B00;stroke-opacity:1;transition-duration:.12s}
+.stem li.vivo svg{filter:drop-shadow(0 0 6px rgba(250,181,27,.55))}
+.placa .alimenta{stroke-opacity:.42}
+.placa .via--alimenta{fill:#F7F8FA;stroke:#003B7C;stroke-opacity:.5;stroke-width:1.4}
+@keyframes led{0%,100%{background:#C9D2DD;box-shadow:none}4%,14%{background:#FAB51B;box-shadow:0 0 0 3px rgba(250,181,27,.22),0 0 12px rgba(250,181,27,.8)}22%{background:#C9D2DD;box-shadow:none}}
+.con-apertura .stem li{opacity:0;transform:translateY(8px)}
+.revelado .stem li{opacity:1;transform:none;transition:opacity .6s ease calc(.9s + var(--i)*.12s),transform .6s cubic-bezier(.16,1,.3,1) calc(.9s + var(--i)*.12s)}
+@media (max-width:1240px) and (min-width:861px){.portada--circuito .portada__cuerpo{grid-template-columns:minmax(0,400px) minmax(0,1fr)}.stem{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+@media (max-width:860px){
+  .placa{height:430px;inset:0 0 auto 0;
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.6) 18%,rgba(0,0,0,.4) 50%,transparent 100%);
+            mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.6) 18%,rgba(0,0,0,.4) 50%,transparent 100%);
+    -webkit-mask-composite:source-over;mask-composite:add}
+  .portada--circuito .portada__cuerpo{grid-template-columns:minmax(0,1fr)}
+  .portada--circuito .portada__titulo{font-size:44px;margin-bottom:22px}
+  .portada__placa{justify-self:stretch;padding-bottom:0}
+  .stem{gap:6px}
+  .stem li{padding:12px 4px 10px}
+  .stem b{font-size:12.5px}
+  .stem svg{width:50px;height:24px}
+}
+@media (prefers-reduced-motion:reduce){.stem .led{animation:none}}
+
+/* los logotipos van sobre un halo claro: la placa se difumina detrás para que se lean limpios */
+.portada--circuito .portada__top{z-index:1}
+.portada--circuito .portada__cuerpo{z-index:2}
+.portada--circuito .portada__logos{position:relative;isolation:isolate}
+.portada--circuito .portada__logos::before{content:"";position:absolute;inset:-60px -140px -70px -90px;z-index:-1;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(247,248,250,1) 0,rgba(247,248,250,.97) 55%,rgba(247,248,250,.75) 78%,rgba(247,248,250,0) 100%);
+  -webkit-mask-image:radial-gradient(closest-side,#000 70%,transparent 100%);mask-image:radial-gradient(closest-side,#000 70%,transparent 100%)}
+@media (max-width:860px){.portada--circuito .portada__logos::before{inset:-30px -40px -30px -30px}}
