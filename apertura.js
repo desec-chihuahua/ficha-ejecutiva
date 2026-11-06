@@ -9,9 +9,12 @@ const N_LOGO = movil ? 7000 : 15000;
 const N_HUB = movil ? 130 : 240;
 const ESTELAS = movil ? 1 : 3;
 const VEL = 1.35;                                   // acelera la partitura original
-const T_TEXTOS = 5.15;                              // segundos reales
+const T_TEXTOS = 6.15;                              // segundos reales: el texto aparece cuando el logotipo ya aterrizó
 
 // ---------- 1. Isotipo oficial muestreado ----------
+// la apertura ya cargó: se cancela el respaldo de la página y se deja uno propio, alineado con esta partitura
+clearTimeout(window.__respaldoPortada);
+setTimeout(() => document.documentElement.classList.add('revelado', 'llego'), (T_TEXTOS + 3) * 1000);
 const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = 'desec-isotipo-azul.png'; });
 const R = 600, cv = document.createElement('canvas'); cv.width = cv.height = R;
 const cx = cv.getContext('2d', { willReadFrequently: true });
