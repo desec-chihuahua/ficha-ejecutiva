@@ -58,10 +58,13 @@
 @media (max-width:1240px) and (min-width:861px){.portada--circuito .portada__cuerpo{grid-template-columns:minmax(0,400px) minmax(0,1fr)}.stem{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 @media (max-width:860px){
-  .placa{height:430px;inset:0 0 auto 0;
-    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.6) 18%,rgba(0,0,0,.4) 50%,transparent 100%);
-            mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.6) 18%,rgba(0,0,0,.4) 50%,transparent 100%);
+  .placa{inset:0;height:100%;
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.4) 180px,#000 250px,#000 580px,rgba(0,0,0,.25) 720px,transparent 1000px);
+            mask-image:linear-gradient(180deg,rgba(0,0,0,.25) 0,rgba(0,0,0,.4) 180px,#000 250px,#000 580px,rgba(0,0,0,.25) 720px,transparent 1000px);
     -webkit-mask-composite:source-over;mask-composite:add}
+  /* el mapa de Juárez se ve completo entre el título y el recuadro de entrada */
+  .portada--circuito .portada__panel{margin-top:min(330px,84vw)}
+  .placa .fondo{fill-opacity:0}.placa .k1{stroke-opacity:.24}.placa .k2{stroke-opacity:.34}.placa .k3{stroke-opacity:.44}
   .portada--circuito .portada__cuerpo{grid-template-columns:minmax(0,1fr)}
   .portada--circuito .portada__titulo{font-size:44px;margin-bottom:22px}
   .portada__placa{justify-self:stretch;padding-bottom:0}

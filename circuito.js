@@ -23,10 +23,17 @@
     gen++;
     svg.textContent = '';
     const W = portada.clientWidth, movil = W < 861;
-    const H = movil ? 430 : portada.clientHeight;
+    const H = portada.clientHeight;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // encuadre del mapa
-    if (movil) { s = W * 1.35 / D.w; tx = W / 2 - 520 * s; ty = 70 - 40 * s; }
+    if (movil) {
+      // celular: el mapa ocupa su propio espacio entre el título y el recuadro de entrada
+      const b = portada.getBoundingClientRect();
+      const arriba = document.querySelector('.portada__titulo').getBoundingClientRect().bottom - b.top;
+      const abajo = panel.getBoundingClientRect().top - b.top;
+      s = Math.min(W * 1.12 / D.w, (abajo - arriba + 40) / (D.h - 40));
+      tx = W / 2 - 520 * s; ty = arriba + 18 - 40 * s;
+    }
     else {
       const b = portada.getBoundingClientRect(), izq = document.querySelector('.portada__intro').getBoundingClientRect().right - b.left;
       s = H * 1.1 / D.h;
