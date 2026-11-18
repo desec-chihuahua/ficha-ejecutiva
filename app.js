@@ -22,6 +22,63 @@ let S = { codigo: null, r: {}, a: {}, estado: "En llenado", paso: 0, u: "", p: "
 // paso: índice de pantalla visible (0..n-1) o "repaso" / "fin"
 const todas = F.pantallas.flatMap(p => p.preguntas.map(q => ({ ...q, pantalla: p.n })));
 const porId = Object.fromEntries(todas.map(q => [q.id, q]));
+// mejoras 17 nov 2026: guías «?», uno o por plantel, espacios por plantel, notas por sección
+const GUIAS = window.GUIAS || {}, ORG = window.ORG || {}, ESPACIO = window.ESPACIO || [], AVISOS = window.AVISOS || {};
+const guiasAb = new Set(), espAb = new Set(), G0 = {};
+function aplicarOrg(id) {
+  const q = porId[id]; if (!q || !ORG[id] || !q.grupo) return;
+  const G = q.grupo;
+  if (!G0[id]) G0[id] = { repetible: G.repetible, campos: G.campos, agregar: G.agregar };
+  if ((S.r[id] || {}).org === "plantel") { G.repetible = true; G.campos = [{ k: "pl", l: "Plantel o laboratorio", t: "texto", ph: "CBTIS 128" }, ...G0[id].campos]; G.agregar = "Agregar otro plantel o laboratorio"; }
+  else { G.repetible = G0[id].repetible; G.campos = G0[id].campos; G.agregar = G0[id].agregar; }
+}
+const aplicarOrgTodas = () => Object.keys(ORG).forEach(aplicarOrg);
+function planteles() {
+  const s = [], add = x => { x = String(x || "").trim(); if (x && !s.some(y => y.toLowerCase() === x.toLowerCase())) s.push(x); };
+  ((S.r["1.9"] || {}).filas || []).forEach(f => add(f.plantel));
+  if (!s.length) ((S.r["1.4"] || {}).filas || []).forEach(f => add(f.institucion));
+  return s;
+}
+function htmlGuiaBtn(k, txt) {
+  return GUIAS[k] ? `<button type="button" class="pguia-btn" data-guia="${esc(k)}" aria-expanded="${guiasAb.has(k)}" aria-controls="g-${esc(k)}"><span class="pguia-btn__q" aria-hidden="true">?</span>${esc(txt || "Guía")}</button>` : "";
+}
+function htmlGuia(k, extra) {
+  const g = GUIAS[k]; if (!g) return "";
+  return `<div class="pguia ${extra || ""} ${guiasAb.has(k) ? "abierta" : ""}" id="g-${esc(k)}"><div class="pguia__in"><div class="pguia__caja">` +
+    g.map(([et, tipo, h]) => `<div class="pguia__fila"><div class="pguia__et">${et}</div>${tipo === "ej" ? `<div class="pguia__ej">${h}</div>` : tipo === "imp" ? `<div class="pguia__imp"><span>${h}</span></div>` : `<div class="pguia__tx">${h}</div>`}</div>`).join("") +
+    `<div class="pguia__pie"><button type="button" class="pguia__cerrar" data-guia-cerrar="${esc(k)}">Entendido, cerrar guía</button></div></div></div></div>`;
+}
+function htmlMini(k, h) {
+  return `<button type="button" class="pguia-btn pguia-btn--mini" data-mini="${esc(k)}" aria-expanded="${guiasAb.has(k)}" aria-label="Ver guía"><span class="pguia-btn__q" aria-hidden="true">?</span></button>` +
+    `<div class="pguia pguia--mini ${guiasAb.has(k) ? "abierta" : ""}" data-mini-panel="${esc(k)}"><div class="pguia__in"><div class="pguia__caja"><div class="pguia__tx">${h}</div></div></div></div>`;
+}
+const claveEsp = (pl, k) => "6.8|" + pl + "|" + k;
+function espLlenos(pl) {
+  const e = ((S.r["6.8"] || {}).esp || {})[pl] || {};
+  return ESPACIO.filter(c => c.tipo === "texto" ? lleno(e[c.k]) : ((S.a[claveEsp(pl, c.k)] || []).length || (c.tipo === "video" && lleno(e.enlace)))).length;
+}
+function htmlEspacios() {
+  const pls = planteles(), esp = (S.r["6.8"] || {}).esp || {};
+  const zona = (cl, et) => `<div class="zona zona--chica" data-zona="6.8" data-clave="${esc(cl)}"><input type="file" multiple aria-label="Subir: ${esc(et)}"><span class="zona__ico">${ICO.subir}</span><b>${esc(et)}</b><span>Arrastre aquí o toque para elegir · hasta 25 MB</span></div><ul class="archivos" data-lista="${esc(cl)}">${(S.a[cl] || []).map(htmlArchivo).join("")}</ul>`;
+  return `<div class="esp-bloque"><p class="esp-bloque__t">Información del espacio en cada plantel <span>(opcional)</span></p>` +
+    (pls.length ? pls.map(pl => {
+      const e = esp[pl] || {}, n = espLlenos(pl);
+      return `<details class="esp" data-esp-card="${esc(pl)}" ${espAb.has(pl) ? "open" : ""}><summary><b>${esc(pl)}</b><span class="esp__n ${n ? "esp__n--ok" : ""}">${n} de ${ESPACIO.length} llenos</span></summary><div class="esp__cuerpo">` +
+        ESPACIO.map(c => {
+          const k = "6.8|" + pl + "|g|" + c.k;
+          const mini = htmlMini(k, c.g), corte = mini.indexOf('<div class="pguia');
+          const cab = `<div class="esp__cab"><span class="esp__l">${esc(c.l)} <small>(opcional)</small></span>${mini.slice(0, corte)}</div>${mini.slice(corte)}`;
+          if (c.tipo === "texto") return `<div class="esp__campo">${cab}<textarea class="campo" rows="2" data-esp="${esc(pl)}" data-ek="${c.k}">${esc(e[c.k])}</textarea></div>`;
+          if (c.tipo === "video") return `<div class="esp__campo">${cab}${zona(claveEsp(pl, c.k), "Subir video")}<input class="campo" data-esp="${esc(pl)}" data-ek="enlace" placeholder="o pegue aquí el enlace de Google Drive" value="${esc(e.enlace)}"></div>`;
+          return `<div class="esp__campo">${cab}${zona(claveEsp(pl, c.k), c.k === "fotos" ? "Subir fotos" : "Subir plano o croquis")}</div>`;
+        }).join("") + `</div></details>`;
+    }).join("") : "") +
+    `<p class="esp-bloque__falta">¿Falta un plantel? Agréguelo en la pregunta 1.9 y aparecerá aquí.</p></div>`;
+}
+function htmlNota(n) {
+  const k = "N" + n, v = S.r[k] || {};
+  return `<section class="nota-sec"><label class="gcampo"><span>Notas para DESEC sobre esta sección (opcional)</span><textarea class="campo" rows="3" data-nota="${k}">${esc(v.v)}</textarea></label><p class="nota-sec__ayuda">${AVISOS.nota || ""}</p></section>`;
+}
 
 /* ================= servidor ================= */
 // la 5.4 tenía días, horario y periodo en texto libre; ahora son renglones con días, horas y fechas
@@ -83,6 +140,7 @@ const val = id => S.r[id] || {};
 function contestada(q) {
   const v = val(q.id);
   if (v.salida) return true;
+  if (v.na) return true;
   if ((S.a[q.id] || []).length || (v.enlaces || []).length) return true;
   if (q.grupo && grupoLleno(q, v) > 0) return true;
   if (q.grupo && q.grupo.reemplaza) return false;
@@ -94,8 +152,9 @@ function filasDe(q, v) { return q.grupo.repetible ? ((v.filas && v.filas.length)
 // cuántos datos (o renglones) tiene llenos un grupo
 function grupoLleno(q, v) {
   const G = q.grupo;
-  if (G.repetible) return (v.filas || []).filter(f => G.campos.some(c => lleno(f[c.k]))).length;
-  return G.campos.filter(c => lleno((v.g || {})[c.k])).length;
+  const cs = G.campos.filter(c => c.k !== "pl");
+  if (G.repetible) return (v.filas || []).filter(f => cs.some(c => lleno(f[c.k]))).length;
+  return cs.filter(c => lleno((v.g || {})[c.k])).length;
 }
 function grupoResumen(q, v) {
   const G = q.grupo, n = grupoLleno(q, v);
@@ -166,6 +225,7 @@ function resumen() {
   const juarez = vis.filter(q => val(q.id).salida).map(q => `${q.id} · ${corto(q.texto)} — ${val(q.id).salida}`);
   const sin = vis.filter(q => !contestada(q)).map(q => `${q.id} · ${corto(q.texto)} — sin contestar`);
   const legible = todas.map(q => [q.id, visible(q) ? texto(q) : "(no aplica)", etiqueta(q)]);
+  F.pantallas.forEach(p => { const n = (S.r["N" + p.n] || {}).v; if (lleno(n)) legible.push(["N" + p.n, n, "Notas para DESEC · sección " + p.n]); });
   return {
     proyecto: (val("1.2").v || "").trim(), quien: [val("1.1").g?.nombre, val("1.1").g?.cargo, val("1.1").g?.institucion].filter(lleno).join(", "),
     avance: Math.round(avanceTotal() * 100), pendientes: [...juarez, ...sin].join("\n"), legible
@@ -184,6 +244,11 @@ function texto(q) {
   if (Array.isArray(v.v)) partes.push(v.v.map(o => v.otros?.[o] ? `${o}: ${v.otros[o]}` : o).join("; "));
   else if (v.v) partes.push(v.otros?.[v.v] ? `${v.v}: ${v.otros[v.v]}` : v.v);
   if (q.grupo && !(ELIGE[q.id] && modoDe(q, v) === "subir")) { const g = grupoTexto(q, v); if (g) partes.push(g); }
+  if (v.na) partes.push("No aplica: no hay una fecha límite");
+  if (lleno(v.afecta)) partes.push("Qué se afectaría: " + v.afecta);
+  if (ORG[q.id] && v.org) partes.unshift(v.org === "plantel" ? "[Uno por plantel]" : "[Uno para todo el proyecto]");
+  if (q.id === "6.8" && v.esp) Object.keys(v.esp).forEach(pl => { const e = v.esp[pl] || {}; const t = ["elec", "adec", "enlace"].filter(k => lleno(e[k])).map(k => ({ elec: "Electricidad e internet", adec: "Adecuaciones", enlace: "Enlace" })[k] + ": " + e[k]); if (t.length) partes.push("Espacio " + pl + ": " + t.join("; ")); });
+  if (q.id === "6.8") Object.keys(S.a).filter(k => k.startsWith("6.8|")).forEach(k => { const l = (S.a[k] || []).map(a => a.nombre); if (l.length) partes.push("Archivos " + k.split("|").slice(1).join(" · ") + ": " + l.join(", ")); });
   if (lleno(v.extra)) partes.push("Algo más: " + v.extra);
   const arch = (S.a[q.id] || []).map(a => a.nombre);
   if (arch.length) partes.push("Archivos: " + arch.join(", "));
@@ -337,9 +402,13 @@ function htmlPregunta(q) {
         (o.otro && on ? `<input class="campo opcion__otro" data-otro="${esc(o.v)}" placeholder="${esc((o.v.match(/\((¿[^)]*\??|explique)\)/) || [, "Escriba aquí"])[1].replace(/^¿/, "¿"))}" value="${esc(v.otros?.[o.v])}">` : "");
     }).join("") + `</div>`;
   }
+  if (q.id === "7.1") cuerpo = (v.na ? cuerpo.replace("<input ", "<input disabled ") : cuerpo) +
+    `<label class="opcion opcion--varias na71 ${v.na ? "sel" : ""}"><input type="checkbox" data-na ${v.na ? "checked" : ""}><span class="opcion__marca"></span><span>No aplica: no hay una fecha límite</span></label>` +
+    `<label class="gcampo gcampo--afecta"><span>¿Qué se afectaría si llega después? (opcional)</span><textarea class="campo" rows="2" data-f="afecta">${esc(v.afecta)}</textarea></label>`;
   if (q.adjunto && q.adjunto.principal) cuerpo = "";
   const base = q.grupo && !q.grupo.reemplaza ? cuerpo : (q.grupo ? "" : cuerpo);
-  if (q.grupo) cuerpo = base + htmlGrupo(q, v);
+  const org = ORG[q.id] ? `<div class="org"><p class="org__t">${esc(ORG[q.id].t)}</p><div class="org__ops" role="radiogroup">${["uno", "plantel"].map(m => `<button type="button" role="radio" class="org__op ${(v.org || "") === m ? "sel" : ""}" aria-checked="${(v.org || "") === m}" data-org="${m}">${esc(m === "uno" ? ORG[q.id].uno : ORG[q.id].pl)}</button>`).join("")}</div></div>` : "";
+  if (q.grupo) cuerpo = base + org + htmlGrupo(q, v);
   let adj = "";
   if (q.adjunto) {
     const archivos = S.a[q.id] || [];
@@ -347,7 +416,7 @@ function htmlPregunta(q) {
       (q.plantilla ? `<a class="plantilla" href="${esc(q.plantilla.url)}" download>${ICO.xls}<div>Descargar ${esc(q.plantilla.nombre.toLowerCase())}<span>Excel · llénela y súbala aquí</span></div></a>` : "") +
       `<div class="zona" data-zona="${q.id}"><input type="file" multiple aria-label="Subir: ${esc(q.adjunto.etiqueta)}"><span class="zona__ico">${ICO.subir}</span><b>${esc(q.adjunto.etiqueta)}</b><span>Arrastre aquí o toque para elegir · PDF, Excel, Word, fotos · hasta 25 MB</span></div>` +
       `<ul class="archivos" data-lista="${q.id}">${archivos.map(htmlArchivo).join("")}</ul>` +
-      `<details class="enlaces" ${(v.enlaces || []).length ? "open" : ""}><summary>¿Pesa más de 25 MB o ya está en la nube? Pegue un enlace</summary>` +
+      `<details class="enlaces" ${(v.enlaces || []).length || q.id === "7.6" ? "open" : ""}><summary>¿Pesa más de 25 MB o ya está en la nube? Pegue un enlace</summary>` +
       `<div class="enlaces__fila"><input class="campo" data-enlace placeholder="https://drive.google.com/… o OneDrive, Dropbox"><button class="btn btn--linea" data-agregar-enlace>Agregar</button></div>` +
       `<ul class="archivos">${(v.enlaces || []).map((u, i) => `<li class="archivo ok"><span class="archivo__ico">URL</span><span class="archivo__txt"><b>${esc(u)}</b></span><button class="archivo__quitar" data-quitar-enlace="${i}" aria-label="Quitar enlace">×</button></li>`).join("")}</ul></details></div>`;
   }
@@ -363,9 +432,10 @@ function htmlPregunta(q) {
   }
   const salidas = (q.salidas || []).map(s => `<button type="button" class="chip ${v.salida === s ? "sel" : ""}" data-salida="${esc(s)}" aria-pressed="${v.salida === s}">${ICO.juarez}${esc(s)} · lo vemos en Juárez</button>`).join("");
   return `<article class="pregunta" data-id="${q.id}" id="q-${q.id.replace(".", "-")}">
-    <div class="pregunta__cab"><span class="pregunta__n">${q.id}</span><h3 class="pregunta__t">${esc(q.texto)}${q.obligatoria ? '<span class="pregunta__ob">Necesaria</span>' : ""}</h3></div>
+    <div class="pregunta__cab"><span class="pregunta__n">${q.id}</span><h3 class="pregunta__t">${esc(q.texto)}${q.obligatoria ? '<span class="pregunta__ob">Necesaria</span>' : ""}</h3>${htmlGuiaBtn(q.id)}</div>
     ${q.ayuda ? `<p class="pregunta__ayuda">${esc(q.ayuda)}</p>` : '<div style="height:10px"></div>'}
-    <div class="pregunta__cuerpo"><div class="campo-wrap">${cuerpo}${adj}${htmlExtra(q, v)}</div>${salidas ? `<div class="salida">${salidas}</div>` : ""}</div>
+    ${htmlGuia(q.id)}
+    <div class="pregunta__cuerpo"><div class="campo-wrap">${cuerpo}${adj}${q.id === "6.8" ? htmlEspacios() : ""}${htmlExtra(q, v)}</div>${salidas ? `<div class="salida">${salidas}</div>` : ""}</div>
   </article>`;
 }
 const abiertos = new Set(), extras = new Set();
@@ -410,6 +480,8 @@ function htmlCampo(c, valor, i) {
   let inp;
   if (c.t === "largo") inp = `<textarea class="campo" rows="3" ${a}>${esc(valor)}</textarea>`;
   else if (c.t === "mes") inp = `<select class="campo" data-g="${c.k}" data-fila="${i}"><option value="">Elija el mes</option>${MESES.map(m => `<option ${valor === m ? "selected" : ""}>${m}</option>`).join("")}</select>`;
+  else if (c.t === "mesrel") { const ops = ["Mes 1", "Mes 2", "Mes 3", "Mes 4", "Mes 5"]; inp = `<select class="campo" data-g="${c.k}" data-fila="${i}" aria-label="${esc(c.l)}"><option value="">Elija el mes</option>${[...(valor && !ops.includes(valor) ? [valor] : []), ...ops].map(m => `<option value="${esc(m)}" ${valor === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`; }
+  else if (c.t === "opcion") inp = `<select class="campo" data-g="${c.k}" data-fila="${i}" aria-label="${esc(c.l)}"><option value="">Elija</option>${(c.ops || []).map(m => `<option value="${esc(m)}" ${valor === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`;
   else if (c.t === "moneda") inp = `<div class="moneda"><input class="campo campo--moneda" inputmode="decimal" value="${esc(valor)}" ${a}></div>`;
   else if (c.t === "dias") {
     const sel = String(valor || "").split(/,\s*/);
@@ -599,13 +671,14 @@ function mostrar(paso, foco) {
   else if (paso === "fin") el.innerHTML = htmlFin();
   else {
     const p = vis[paso];
-    el.innerHTML = `<header class="pantalla__cab"><p class="kicker">Pantalla ${paso + 1} de ${vis.length}</p><h1 class="pantalla__titulo">${esc(p.titulo)}</h1><p class="pantalla__intro">${esc(INTRO[p.n] || "")}</p></header>` +
+    el.innerHTML = `<p class="fechas">${AVISOS.fechas || ""}</p><header class="pantalla__cab"><p class="kicker">Pantalla ${paso + 1} de ${vis.length}</p><h1 class="pantalla__titulo">${esc(p.titulo)}</h1><p class="pantalla__intro">${esc(INTRO[p.n] || "")}</p></header>` +
       (paso === 0 ? `<ol class="guia" aria-label="Cómo llenar">
         <li><span class="guia__ico guia__ico--azul">${ICO.mas}</span><b>Toque los botones azules</b><small>se despliegan los cuadros para llenar</small></li>
         <li><span class="guia__ico">+</span><b>Use «+ Agregar»</b><small>para sumar renglones o un comentario</small></li>
         <li><span class="guia__ico guia__ico--ambar">${ICO.juarez}</span><b>¿No lo tiene?</b><small>marque «Aún no lo tenemos» y siga</small></li>
-      </ol>` : "") +
-      p.preguntas.map(q => visible(q) ? htmlPregunta(q) : `<div class="oculta" data-oculta="${q.id}" hidden></div>`).join("");
+      </ol><p class="aviso-guia"><span class="pguia-btn__q" aria-hidden="true">?</span><span>${AVISOS.guia || ""}</span></p>` : "") +
+      (p.n === 3 && GUIAS.S3 ? `<div class="sec-guia">${htmlGuiaBtn("S3", "Quién es quién en esta sección")}${htmlGuia("S3", "pguia--sec")}</div>` : "") +
+      p.preguntas.map(q => visible(q) ? htmlPregunta(q) : `<div class="oculta" data-oculta="${q.id}" hidden></div>`).join("") + htmlNota(p.n);
     $("#movilPaso").textContent = `Pantalla ${paso + 1} de ${vis.length}`;
     $("#movilTitulo").textContent = p.titulo;
   }
@@ -634,7 +707,8 @@ function htmlRepaso() {
   const jz = qs.filter(q => val(q.id).salida), sin = qs.filter(q => !contestada(q));
   const faltan = ["1.1", "1.2"].filter(id => !contestada(porId[id]) || val(id).salida);
   const li = q => `<li><button data-ir="${q.id}">${q.id} · ${esc(corto(q.texto))}</button></li>`;
-  return `<header class="pantalla__cab"><p class="kicker">Último paso</p><h1 class="pantalla__titulo">Revisar y enviar</h1><p class="pantalla__intro">No necesita tener todo. Lo marcado como pendiente lo resolvemos juntos en Ciudad Juárez. Puede seguir editando después de enviar.</p></header>
+  return `<p class="fechas">${AVISOS.fechas || ""}</p><header class="pantalla__cab"><p class="kicker">Último paso</p><h1 class="pantalla__titulo">Revisar y enviar</h1><p class="pantalla__intro">No necesita tener todo. Lo marcado como pendiente lo resolvemos juntos en Ciudad Juárez. Puede seguir editando después de enviar.</p></header>
+  ${AVISOS.envio ? `<div class="etapas">${AVISOS.envio}</div>` : ""}
   <div class="repaso">${vis.map((p, i) => `<div class="repaso__p"><span class="paso__n" style="border-color:var(--linea);color:var(--azul)">${p.n}</span><b>${esc(p.titulo)}</b><small>${Math.round(avancePantalla(p) * 100)} %</small><button class="btn btn--linea" data-pantalla="${i}">Ver</button></div>`).join("")}</div>
   ${(() => { const s = sumas().filter(r => !r.ok), f = avisosFormato(); return s.length || f.length ? `<div class="bloque bloque--revise"><h3>Revise antes de enviar (${s.length + f.length})</h3><p style="margin:0 0 6px;color:var(--gris)">Puede enviar así; solo le avisamos para que la ficha llegue lo más completa posible.</p><ul>${s.map(r => `<li><button data-ir="${r.id}">${r.id} · ${esc(textoSuma(r))}</button></li>`).join("")}${f.map(a => `<li><button data-ir="${a.q.id}">${a.q.id} · ${esc(a.txt)}</button></li>`).join("")}</ul></div>` : ""; })()}
   <p class="descarga"><button type="button" class="btn btn--linea" data-pdf>${ICO.subir.replace('M10 13V3M6 7l4-4 4 4', 'M10 3v10M6 9l4 4 4-4')} Descargar mi ficha en PDF</button></p>
@@ -755,6 +829,13 @@ function refrescarCondiciones() {
   });
 }
 document.addEventListener("input", e => {
+  if (e.target.dataset && e.target.dataset.nota) { S.r[e.target.dataset.nota] = { v: e.target.value }; if (!lleno(e.target.value)) delete S.r[e.target.dataset.nota]; cambio(); return; }
+  if (e.target.dataset && e.target.dataset.esp !== undefined) {
+    const t = e.target, pl = t.dataset.esp;
+    setR("6.8", v => { v.esp = v.esp || {}; v.esp[pl] = v.esp[pl] || {}; v.esp[pl][t.dataset.ek] = t.value; });
+    const card = t.closest(".esp"), n = card && card.querySelector(".esp__n"); if (n) { const k = espLlenos(pl); n.textContent = k + " de " + ESPACIO.length + " llenos"; n.classList.toggle("esp__n--ok", !!k); }
+    return;
+  }
   const el = e.target, q = q_(el); if (!q) return;
   if (el.dataset.f !== "extra" && val(q.id).salida && lleno(el.value)) {
     delete S.r[q.id].salida;
@@ -776,6 +857,7 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   const el = e.target, q = q_(el); if (!q) return;
+  if (el.dataset.na !== undefined) { setR(q.id, v => { if (el.checked) v.na = true; else delete v.na; delete v.salida; }); redibujar(q, "[data-na]"); pintarProgreso(); return; }
   if (el.type === "radio" || el.type === "checkbox") {
     setR(q.id, v => {
       if (el.type === "radio") v.v = el.value;
@@ -788,7 +870,7 @@ document.addEventListener("change", e => {
     refrescarCondiciones(); pintarProgreso();
     if (el.type === "radio") { const a = document.querySelector(`.pregunta[data-id="${q.id}"]`); a && siguienteLlamado(a); }
   }
-  if (el.type === "file") { subirArchivos(q, el.files); el.value = ""; }
+  if (el.type === "file") { const z = el.closest("[data-clave]"); subirArchivos(q, el.files, z ? z.dataset.clave : undefined); el.value = ""; }
   if (el.tagName === "SELECT" && el.dataset.g) el.dispatchEvent(new Event("input", { bubbles: true }));
 });
 function redibujar(q, foco) {
@@ -803,8 +885,34 @@ function redibujar(q, foco) {
   else { const o = nuevo.querySelector(".opcion__otro"); if (o && !o.value) o.focus(); }
 }
 document.addEventListener("click", e => {
+  const sum = e.target.closest(".esp > summary");
+  if (sum) { const d = sum.parentElement; setTimeout(() => { d.open ? espAb.add(d.dataset.espCard) : espAb.delete(d.dataset.espCard); }, 0); return; }
   const t = e.target.closest("button,[data-ir]"); if (!t) return;
+  if (t.dataset.guia || t.dataset.guiaCerrar) {
+    const k = t.dataset.guia || t.dataset.guiaCerrar, a = t.dataset.guia ? !guiasAb.has(k) : false;
+    a ? guiasAb.add(k) : guiasAb.delete(k);
+    const g = document.getElementById("g-" + k); g && g.classList.toggle("abierta", a);
+    const b = document.querySelector(`[data-guia="${CSS.escape(k)}"]`); b && b.setAttribute("aria-expanded", a);
+    if (!a && t.dataset.guiaCerrar && b) { const r = b.getBoundingClientRect(); if (r.top < 0) b.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    return;
+  }
+  if (t.dataset.mini) {
+    const k = t.dataset.mini, a = !guiasAb.has(k); a ? guiasAb.add(k) : guiasAb.delete(k);
+    t.setAttribute("aria-expanded", a); const g = document.querySelector(`[data-mini-panel="${CSS.escape(k)}"]`); g && g.classList.toggle("abierta", a);
+    return;
+  }
   const q = q_(t);
+  if (t.dataset.org && q) {
+    const m = t.dataset.org;
+    setR(q.id, v => {
+      v.org = m;
+      if (m === "plantel" && !((v.filas || []).some(f => Object.keys(f).some(k => lleno(f[k]))))) { const pls = planteles(); v.filas = pls.length ? pls.map(pl => ({ pl })) : [{}]; }
+      delete v.salida;
+    });
+    aplicarOrg(q.id); abiertos.add(q.id); redibujar(q, `[data-org="${m}"]`); pintarProgreso();
+    if (Object.values(ROLES_35).includes(q.id)) seguirAsistentes();
+    return;
+  }
   if (t.dataset.dia && q) {
     const i = +t.dataset.fila, on = !t.classList.contains("sel");
     t.classList.toggle("sel", on); t.setAttribute("aria-pressed", on);
@@ -887,7 +995,7 @@ document.addEventListener("focusin", e => {
 /* ---------- arrastrar y soltar ---------- */
 document.addEventListener("dragover", e => { const z = e.target.closest?.(".zona"); if (z) { e.preventDefault(); z.classList.add("sobre"); } });
 document.addEventListener("dragleave", e => { const z = e.target.closest?.(".zona"); z && z.classList.remove("sobre"); });
-document.addEventListener("drop", e => { const z = e.target.closest?.(".zona"); if (!z) return; e.preventDefault(); z.classList.remove("sobre"); subirArchivos(q_(z), e.dataTransfer.files); });
+document.addEventListener("drop", e => { const z = e.target.closest?.(".zona"); if (!z) return; e.preventDefault(); z.classList.remove("sobre"); subirArchivos(q_(z), e.dataTransfer.files, z.dataset.clave); });
 
 /* ---------- archivos ---------- */
 let subiendo = 0;
@@ -904,31 +1012,33 @@ async function reducirImagen(file) {
   } catch { return file; }
 }
 const enCurso = {};
-function pintarLista(q) {
-  const ul = document.querySelector(`[data-lista="${q.id}"]`); if (!ul) return;
-  ul.innerHTML = [...(S.a[q.id] || []), ...(enCurso[q.id] || [])].map(htmlArchivo).join("");
+function pintarLista(q, clave) {
+  clave = clave || q.id;
+  const ul = document.querySelector(`[data-lista="${CSS.escape(clave)}"]`); if (!ul) return;
+  ul.innerHTML = [...(S.a[clave] || []), ...(enCurso[clave] || [])].map(htmlArchivo).join("");
 }
-async function subirArchivos(q, files) {
+async function subirArchivos(q, files, clave) {
+  clave = clave || q.id;
   for (const f0 of Array.from(files)) {
     const tmp = { id: "t" + Math.random().toString(36).slice(2), nombre: f0.name, tam: f0.size, subiendo: true, p: 0 };
-    (enCurso[q.id] = enCurso[q.id] || []).push(tmp); pintarLista(q);
+    (enCurso[clave] = enCurso[clave] || []).push(tmp); pintarLista(q, clave);
     subiendo++; setGuardado("guardando", "Subiendo archivo…");
     try {
       const f = await reducirImagen(f0);
       if (f.size > MAX) throw new Error("Pesa más de 25 MB: pegue un enlace abajo");
       if (!f.size) throw new Error("El archivo está vacío");
       const datos = await leer(f);
-      const r = await api({ accion: "subir", codigo: S.codigo, pregunta: q.id, nombre: f.name, tipo: f.type, datos }, p => { tmp.p = p; const b = document.querySelector(`[data-arch="${tmp.id}"] .archivo__barra i`); b && (b.style.width = Math.round(p * 100) + "%"); });
+      const r = await api({ accion: "subir", codigo: S.codigo, pregunta: clave, nombre: f.name, tipo: f.type, datos }, p => { tmp.p = p; const b = document.querySelector(`[data-arch="${tmp.id}"] .archivo__barra i`); b && (b.style.width = Math.round(p * 100) + "%"); });
       S.a = r.archivos;
-      enCurso[q.id] = enCurso[q.id].filter(x => x !== tmp);
-      if (val(q.id).salida) setR(q.id, v => { delete v.salida; });
+      enCurso[clave] = enCurso[clave].filter(x => x !== tmp);
+      if (clave === q.id && val(q.id).salida) setR(q.id, v => { delete v.salida; });
     } catch (err) {
       tmp.subiendo = false; tmp.error = err.message === "Sin conexión" ? "No se pudo subir: revise su conexión e intente de nuevo" : err.message;
-      setTimeout(() => { enCurso[q.id] = (enCurso[q.id] || []).filter(x => x !== tmp); pintarLista(q); }, 9000);
+      setTimeout(() => { enCurso[clave] = (enCurso[clave] || []).filter(x => x !== tmp); pintarLista(q, clave); }, 9000);
     } finally {
-      subiendo--; pintarLista(q); pintarProgreso();
+      subiendo--; pintarLista(q, clave); pintarProgreso();
       if (!subiendo) setGuardado("ok", "Archivos guardados");
-      if (!enCurso[q.id]?.length) { redibujar(q, ".zona input"); }
+      if (!enCurso[clave]?.length) { redibujar(q, clave === q.id ? ".zona input" : null); }
     }
   }
 }
@@ -1041,6 +1151,7 @@ async function abrir(codigo, nuevo) {
   const loc = ls.get("ficha_" + codigo);
   if (loc && loc.r && JSON.stringify(loc.r) !== JSON.stringify(S.r) && Object.keys(loc.r).length >= Object.keys(S.r).length) { S.r = loc.r; pendiente = true; setTimeout(guardar, 500); }
   if (migrar()) { ls.set("ficha_" + codigo, { r: S.r, t: Date.now() }); pendiente = true; setTimeout(guardar, 500); }
+  aplicarOrgTodas(); guiasAb.clear(); espAb.clear();
   $("#portada").hidden = true; $("#app").hidden = false;
   $("#codigoTxt").textContent = S.u; $("#instTxt").textContent = S.inst;
   anillosGrandes($("#anillos"), pantallasVisibles().length);

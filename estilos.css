@@ -454,3 +454,81 @@ select.campo{appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg x
 .auto__op small{font-size:12px;color:var(--gris)}
 .bloque li button:focus-visible,.expediente__lista li button:focus-visible{outline:3px solid var(--ambar);outline-offset:2px;border-radius:6px}
 .gcampo--dias ~ label.gcampo--texto{grid-column:1/-1}
+
+/* ===== mejoras 17 nov 2026 · guías «?» (diseño aprobado por Ángel) ===== */
+.pregunta__cab .pguia-btn{margin:2px 0 0 auto}
+.pguia-btn{display:inline-flex;align-items:center;gap:7px;flex:none;height:30px;padding:0 12px 0 4px;border-radius:15px;border:1.5px solid #F2D58A;background:var(--ambar-suave);color:var(--ambar-osc);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
+.pguia-btn:hover{background:#FFEDB8;border-color:var(--ambar)}
+.pguia-btn__q{width:22px;height:22px;border-radius:50%;background:var(--ambar);color:var(--noche);display:grid;place-items:center;font-weight:700;font-size:13px;line-height:1;flex:none}
+.pguia-btn[aria-expanded="true"]{background:var(--profundo);border-color:var(--profundo);color:#fff}
+.pguia-btn[aria-expanded="true"] .pguia-btn__q{background:#fff;color:var(--profundo)}
+.pguia{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease;margin-left:54px}
+.pguia.abierta{grid-template-rows:1fr}
+.pguia__in{overflow:hidden;min-height:0}
+.pguia__caja{margin:4px 0 16px;border-radius:14px;background:var(--papel);border:1px solid var(--linea);padding:18px 20px 16px}
+.pguia__fila{display:grid;grid-template-columns:132px 1fr;gap:4px 18px;padding:10px 0;border-top:1px solid #EFE8DA}
+.pguia__fila:first-child{border-top:0;padding-top:2px}
+.pguia__et{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--azul);padding-top:3px}
+.pguia__tx{font-size:15px;line-height:1.6;color:var(--tinta);margin:0}
+.pguia__tx b,.pguia__ej b,.pguia__imp b{color:var(--profundo);font-weight:600}
+.pguia__tx ul{margin:4px 0 0;padding-left:18px}.pguia__tx li{margin:3px 0}
+.pguia__ej{background:var(--azul-suave);border-radius:10px;padding:10px 14px;color:var(--profundo);font-size:15px;line-height:1.55}
+.pguia__imp{display:flex;gap:10px;background:var(--ambar-suave);border-radius:10px;padding:10px 14px;color:#5C3D00;font-size:15px;line-height:1.55}
+.pguia__imp::before{content:"!";flex:none;width:20px;height:20px;border-radius:50%;background:var(--ambar);color:var(--noche);font-weight:700;font-size:13px;display:grid;place-items:center;margin-top:2px}
+.pguia__pie{display:flex;justify-content:flex-end;padding-top:10px}
+.pguia__cerrar{border:0;background:none;color:var(--azul);font-weight:600;font-size:14px;cursor:pointer;padding:6px 4px}
+.pguia--sec{margin-left:0}
+.pguia--sec .pguia__fila{grid-template-columns:230px 1fr}
+.sec-guia{margin:-8px 0 22px}
+.pguia-btn--mini{width:26px;height:26px;padding:0;justify-content:center;border-radius:50%}
+.pguia-btn--mini .pguia-btn__q{width:18px;height:18px;font-size:12px}
+.pguia--mini{margin-left:0}
+.pguia--mini .pguia__caja{margin:6px 0 4px;padding:10px 14px}
+/* avisos */
+.fechas{margin:0 0 18px;padding:9px 14px;border-radius:10px;background:var(--ambar-suave);border:1px solid #F2D58A;color:#5C3D00;font-size:14px;line-height:1.5}
+.fechas b{color:var(--ambar-osc)}
+.aviso-guia{display:flex;gap:10px;align-items:flex-start;margin:-6px 0 22px;font-size:15px;color:var(--gris)}
+.aviso-guia b{color:var(--ambar-osc)}
+.etapas{background:var(--papel);border:1px solid var(--linea);border-left:4px solid var(--ambar);border-radius:var(--r);padding:18px 22px;margin-bottom:16px}
+.etapas__t{margin:0 0 8px;color:var(--tinta)}.etapas__t b{color:var(--profundo)}
+.etapas__l{margin:0 0 8px;padding-left:22px}.etapas__l li{margin:4px 0}.etapas__l b{color:var(--profundo)}
+.etapas__p{margin:0;color:var(--gris)}
+/* uno solo o uno por plantel */
+.org{margin:0 0 12px}
+.org__t{margin:0 0 8px;font-size:14px;font-weight:600;color:var(--profundo)}
+.org__ops{display:flex;flex-wrap:wrap;gap:8px}
+.org__op{min-height:44px;padding:8px 16px;border-radius:12px;border:1.5px solid var(--linea);background:#fff;color:var(--tinta);font-size:15px;cursor:pointer;text-align:left;transition:border-color .2s,background .2s}
+.org__op:hover{border-color:#B8C9DE}
+.org__op.sel{border-color:var(--azul);background:var(--azul-suave);color:var(--profundo);font-weight:600}
+/* 7.1 */
+.na71{margin-top:10px}
+.gcampo--afecta{margin-top:12px}
+/* 6.8 espacios por plantel */
+.esp-bloque{margin-top:16px}
+.esp-bloque__t{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--profundo)}
+.esp-bloque__t span{font-weight:400;color:var(--gris-m)}
+.esp-bloque__falta{margin:8px 0 0;font-size:14px;color:var(--gris-m)}
+.esp{border:1px solid var(--linea);border-radius:14px;background:#fff;margin-bottom:8px;overflow:hidden}
+.esp>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;cursor:pointer;font-size:15px;color:var(--profundo)}
+.esp>summary::-webkit-details-marker{display:none}
+.esp>summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--azul);border-bottom:2px solid var(--azul);transform:rotate(45deg);margin-left:4px;transition:transform .2s}
+.esp[open]>summary::after{transform:rotate(-135deg)}
+.esp>summary b{font-weight:600;flex:1}
+.esp__n{font-size:13px;color:var(--gris-m);white-space:nowrap}
+.esp__n--ok{color:var(--ok)}
+.esp__cuerpo{display:grid;gap:14px;padding:4px 16px 16px;border-top:1px solid #EFE8DA}
+.esp__campo{display:grid;gap:6px}
+.esp__cab{display:flex;align-items:center;gap:8px;padding-top:10px}
+.esp__l{font-size:13px;font-weight:600;color:var(--gris)}
+.esp__l small{font-weight:400;color:var(--gris-m)}
+.zona--chica{padding:14px 12px}
+/* notas por sección */
+.nota-sec{margin:8px 0 6px;padding:18px 20px;border:1.5px dashed #D9CFBA;border-radius:var(--r);background:var(--papel)}
+.nota-sec__ayuda{margin:8px 0 0;font-size:14px;color:var(--gris-m)}
+@media (max-width:860px){
+  .pguia{margin-left:0}
+  .pguia__fila,.pguia--sec .pguia__fila{grid-template-columns:1fr;gap:4px}
+  .pguia__caja{padding:16px 16px 12px}
+  .pregunta__cab .pguia-btn{margin-left:0}
+}
+.campo:disabled{opacity:.45;cursor:not-allowed}
