@@ -64,3 +64,7 @@
 }
 .cierre.es-vencido .cierre__punto::after,.cierre.es-vencido .cierre__sep{animation:none}
 @media (prefers-reduced-motion:reduce){.cierre *{animation:none!important}}
+/* ancho fijo de los dígitos: evita que la tarjeta cambie de alto cada segundo */
+.cierre__d{display:inline-block;width:1.25em;text-align:center;box-sizing:content-box;white-space:nowrap}
+.cierre__reloj{flex:none}
+.cierre--portada .cierre__tit{min-height:2.3em}
